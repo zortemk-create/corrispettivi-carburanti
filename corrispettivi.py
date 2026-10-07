@@ -159,6 +159,22 @@ def frist(monat):
     return month_bounds(last + dt.timedelta(days=1))[1]
 
 
+def meldestatus(monat, heute, gesperrt, hat_iut, tage_mit_daten, vor_erfassung):
+    """Status eines Monats fuer die Uebersicht.
+    gemeldet | korrektur (nach Meldung wieder geoeffnet) | laufend | keine_daten | nicht_erfasst | ueberfaellig | offen"""
+    if gesperrt:
+        return 'gemeldet'
+    if hat_iut:
+        return 'korrektur'
+    if monat >= heute.replace(day=1):
+        return 'laufend'
+    if tage_mit_daten == 0:
+        return 'keine_daten'
+    if vor_erfassung:
+        return 'nicht_erfasst'
+    return 'ueberfaellig' if heute > frist(monat) else 'offen'
+
+
 def dateiname(einst, monat, version):
     return f"CORR_CARB_{einst['codice_ditta']}_{monat:%Y-%m}_v{version}.xml"
 

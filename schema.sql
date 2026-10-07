@@ -28,6 +28,12 @@ CREATE TABLE IF NOT EXISTS corrispettivi.monate (
   status TEXT NOT NULL DEFAULT 'offen' CHECK (status IN ('offen', 'uebermittelt'))
 );
 
+-- Wer hat den Monat gemeldet? 'selbst' (ueber dieses Tool/PUDM) oder 'enilive' (Meldung durch Enilive)
+ALTER TABLE corrispettivi.monate ADD COLUMN IF NOT EXISTS quelle TEXT NOT NULL DEFAULT 'selbst'
+  CHECK (quelle IN ('selbst', 'enilive'));
+ALTER TABLE corrispettivi.monate ADD COLUMN IF NOT EXISTS iut TEXT;
+ALTER TABLE corrispettivi.monate ADD COLUMN IF NOT EXISTS gemeldet_am DATE;
+
 -- Jede erzeugte XML-Datei wird versioniert abgelegt
 CREATE TABLE IF NOT EXISTS corrispettivi.dateien (
   id SERIAL PRIMARY KEY,

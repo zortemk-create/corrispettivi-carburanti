@@ -20,6 +20,19 @@
 </header>
 
 <main>
+  <details class="card" id="uebersicht" open>
+    <summary><h2>Meldestatus</h2> <span id="ue-summary" class="muted"></span></summary>
+    <div class="tablewrap">
+      <table id="ue-tabelle">
+        <thead>
+          <tr><th>Monat</th><th>Status</th><th>Gemeldet über</th><th>IUT</th><th>Gemeldet am</th><th>Frist</th>
+              <th class="num">Tage</th><th class="num">Corrispettivi lordo</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </details>
+
   <section class="monthbar">
     <button id="prev" class="ghost" aria-label="Vormonat">‹</button>
     <input type="month" id="monat">
@@ -70,6 +83,7 @@
     <button id="btn-entsperren" class="ghost hidden">Korrektur öffnen</button>
     <button id="btn-drucken" class="ghost">Drucken</button>
     <button id="btn-xml" class="ghost">XML erstellen (Archiv)</button>
+    <button id="btn-extern" class="ghost">Als von Enilive gemeldet markieren</button>
     <label class="muted kopierformat">Kopierformat
       <select id="dezimal"><option value=",">1234,56</option><option value=".">1234.56</option></select>
     </label>
@@ -110,6 +124,20 @@
     <div class="dlg-actions">
       <button value="cancel" class="ghost">Abbrechen</button>
       <button id="e-save" value="save" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-extern">
+  <form method="dialog">
+    <h3>Von Enilive gemeldet</h3>
+    <p>Trage ein, was im Enilive-Portal (Spalten <em>IUT</em> und <em>Data Invio</em>) für diesen Monat steht.
+       Der Monat wird gesperrt und darf nicht noch einmal gesendet werden.</p>
+    <label>IUT<input id="ex-iut" maxlength="19" placeholder="z.B. 20261005M4152744735" required></label>
+    <label>Datum der Meldung (Data Invio)<input id="ex-datum" type="date" required></label>
+    <div class="dlg-actions">
+      <button value="cancel" class="ghost">Abbrechen</button>
+      <button id="ex-save" value="save" class="primary">Als gemeldet markieren</button>
     </div>
   </form>
 </dialog>

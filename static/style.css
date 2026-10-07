@@ -62,6 +62,7 @@ td button { padding: 2px 9px; font-size: 12px; }
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
 .hinweis { padding: 10px 14px; border-radius: 8px; background: var(--warn-bg); color: var(--warn); }
 .hinweis.bad { background: var(--bad-bg); color: var(--bad); }
+.hinweis a { color: inherit; text-decoration: underline; }
 .hinweis ul { margin: 4px 0 0; padding-left: 18px; }
 
 .datei { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
@@ -88,6 +89,14 @@ dialog input { color: var(--text); }
 td.kopie { cursor: copy; }
 td.kopie:hover { text-decoration: underline; color: var(--accent); }
 tr.abweichung td { background: var(--bad-bg); }
+#ue-tabelle tbody tr { cursor: pointer; }
+#ue-tabelle tbody tr:hover td { background: var(--edit-bg); }
+#ue-tabelle tr.aktiv td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.badge.gemeldet { background: var(--ok-bg); color: var(--ok); }
+.badge.ueberfaellig { background: var(--bad-bg); color: var(--bad); }
+.badge.korrektur { background: var(--warn-bg); color: var(--warn); }
+.badge.laufend, .badge.nicht_erfasst, .badge.keine_daten { background: var(--line); color: var(--muted); }
+.hinweis.ok { background: var(--ok-bg); color: var(--ok); }
 .tag.abweichung { border-color: var(--bad); color: var(--bad); }
 .kopierformat { display: flex; align-items: center; gap: 6px; margin-left: auto; }
 select { font: inherit; color: var(--text); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }

@@ -37,6 +37,27 @@ acquisita“ abgelehnt.)
   werden von der ADM abgelehnt bzw. führen zu Abweichungen.
 - Für die Web-Anwendung ist keine digitale Signatur nötig (Login per SPID/CNS).
 
+## Meldestatus-Übersicht und API
+
+Oben im Dashboard zeigt **Meldestatus** alle Monate: *Gemeldet* (mit Quelle Enilive oder dieses Tool, IUT und
+Meldedatum), *Offen*, *Überfällig* (Frist = letzter Tag des Folgemonats), *Läuft noch*, *Korrektur offen*.
+Monate vor dem ersten erfassten Monat sind *Nicht erfasst*. Ein Klick auf eine Zeile öffnet den Monat.
+
+Hat Enilive einen Monat gemeldet, wird er über **Als von Enilive gemeldet markieren** (IUT + Meldedatum aus dem
+Enilive-Portal) gesperrt, damit er nicht doppelt gesendet wird. September 2026 ist so erfasst
+(IUT 20261005M4152744735, gemeldet am 05.10.2026).
+
+Der Status ist auch maschinenlesbar abfragbar:
+
+```
+GET /api/uebersicht   →  { heute, monate: [ { monat, status, quelle, iut, gemeldet_am, frist,
+                            tage_mit_daten, tage_gesamt, brutto, imponibile, imposta, abweichungen } ] }
+GET /api/monat/2026-09 →  Tageswerte, Meldung (quelle/iut/gemeldet_am), Dateien
+```
+
+`status`: `gemeldet | offen | ueberfaellig | laufend | korrektur | nicht_erfasst | keine_daten`.
+Ist `APP_PASSWORD` gesetzt, gilt HTTP Basic Auth auch für die API.
+
 ## Berechnung
 
 - Corrispettivo lordo je Tag = Σ (Zählerstand neu − alt) × Tagespreis der Sorte (ssp, d, blu)

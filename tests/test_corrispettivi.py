@@ -69,5 +69,28 @@ class HilfsTest(unittest.TestCase):
         self.assertFalse(cr.gleich(None, a))
 
 
+class MeldestatusTest(unittest.TestCase):
+    heute = dt.date(2026, 10, 7)
+
+    def status(self, monat, gesperrt=False, iut=False, tage=20, vor=False, heute=None):
+        return cr.meldestatus(monat, heute or self.heute, gesperrt, iut, tage, vor)
+
+    def test_gemeldet_und_korrektur(self):
+        self.assertEqual(self.status(dt.date(2026, 9, 1), gesperrt=True, iut=True), 'gemeldet')
+        self.assertEqual(self.status(dt.date(2026, 9, 1), iut=True), 'korrektur')
+
+    def test_laufender_monat(self):
+        self.assertEqual(self.status(dt.date(2026, 10, 1)), 'laufend')
+
+    def test_offen_und_ueberfaellig(self):
+        self.assertEqual(self.status(dt.date(2026, 9, 1)), 'offen')
+        self.assertEqual(self.status(dt.date(2026, 9, 1), heute=dt.date(2026, 11, 1)), 'ueberfaellig')
+        self.assertEqual(self.status(dt.date(2026, 9, 1), heute=dt.date(2026, 10, 31)), 'offen')
+
+    def test_vor_erfassung_und_ohne_daten(self):
+        self.assertEqual(self.status(dt.date(2026, 8, 1), vor=True), 'nicht_erfasst')
+        self.assertEqual(self.status(dt.date(2026, 8, 1), tage=0), 'keine_daten')
+
+
 if __name__ == '__main__':
     unittest.main()

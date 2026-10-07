@@ -7,6 +7,14 @@ const WT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
 const state = { monat: null, daten: null, tagEdit: null };
 
+const STATUS_TEXT = {
+  gemeldet: 'Gemeldet', offen: 'Offen', ueberfaellig: 'Überfällig', laufend: 'Läuft noch',
+  korrektur: 'Korrektur offen', nicht_erfasst: 'Nicht erfasst', keine_daten: 'Keine Daten',
+};
+const QUELLE_TEXT = { enilive: 'Enilive', selbst: 'Dieses Tool' };
+const fmtDatum = (iso) => (iso ? new Date(iso + 'T00:00:00').toLocaleDateString('de-DE') : '–');
+const monatsname = (m) => new Date(m + '-01T00:00:00').toLocaleDateString('de-DE', { month: 'long', year: 'numeric' });
+
 // ---------- Hilfsfunktionen ----------
 
 function store(key, value) {
@@ -86,19 +94,46 @@ async function laden() {
   }
   render();
   ladeProtokoll();
+  ladeUebersicht();
+}
+
+async function ladeUebersicht() {
+  try {
+    const u = await api('GET', '/api/uebersicht');
+    const rows = u.monate.slice().reverse().map((m) => `
+      <tr data-monat="${m.monat}" class="${m.monat === state.monat ? 'aktiv' : ''}">
+        <td><strong>${esc(monatsname(m.monat))}</strong></td>
+        <td><span class="badge ${m.status}">${STATUS_TEXT[m.status]}</span>${m.abweichungen ? ` <span class="tag abweichung">${m.abweichungen} geändert</span>` : ''}</td>
+        <td>${m.quelle ? esc(QUELLE_TEXT[m.quelle]) : '–'}</td>
+        <td>${m.iut ? esc(m.iut) : '–'}</td>
+        <td>${fmtDatum(m.gemeldet_am)}</td>
+        <td>${m.status === 'gemeldet' || m.status === 'nicht_erfasst' || m.status === 'keine_daten' ? '' : fmtDatum(m.frist)}</td>
+        <td class="num">${m.tage_mit_daten}/${m.tage_gesamt}</td>
+        <td class="num">${m.tage_mit_daten ? fmtEur(m.brutto) : '–'}</td>
+      </tr>`);
+    $('#ue-tabelle tbody').innerHTML = rows.join('');
+    const offen = u.monate.filter((m) => m.status === 'offen' || m.status === 'ueberfaellig' || m.status === 'korrektur');
+    $('#ue-summary').textContent = offen.length
+      ? `· ${offen.length} Monat(e) zu melden: ${offen.map((m) => monatsname(m.monat)).join(', ')}`
+      : '· nichts offen';
+  } catch (err) { zeigeFehler(err); }
 }
 
 function render() {
   const d = state.daten;
   const gesperrt = d.status === 'uebermittelt';
   const status = $('#status');
-  status.className = `badge ${d.status}`;
-  status.textContent = gesperrt ? 'Übermittelt · gesperrt' : 'Offen';
+  const mg = d.meldung;
+  status.className = `badge ${gesperrt ? 'gemeldet' : 'offen'}`;
+  status.textContent = gesperrt ? `Gemeldet · ${QUELLE_TEXT[mg?.quelle] || 'gesperrt'}` : (mg ? 'Korrektur offen' : 'Offen');
   $('#frist').textContent = `Frist (IVA mensile): ${new Date(d.frist + 'T00:00:00').toLocaleDateString('de-DE')}`;
 
   const hinweise = [];
-  if (d.einstellungen_fehler.length) {
+  if (d.einstellungen_fehler.length && !gesperrt) {
     hinweise.push(`<div class="hinweis bad">Stammdaten fehlen – bitte <a href="#" id="link-einst">Einstellungen</a> ausfüllen:<ul>${d.einstellungen_fehler.map((f) => `<li>${esc(f)}</li>`).join('')}</ul></div>`);
+  }
+  if (gesperrt && mg?.quelle === 'enilive') {
+    hinweise.push(`<div class="hinweis ok">Dieser Monat wurde von Enilive am ${fmtDatum(mg.gemeldet_am)} gemeldet (IUT ${esc(mg.iut)}). Nicht erneut senden – die ADM lehnt bereits gemeldete Tage ab.</div>`);
   }
   const heute = new Date().toISOString().slice(0, 10);
   const fehlend = d.tage.filter((t) => !t.melden && t.datum <= heute);
@@ -148,6 +183,7 @@ function render() {
 
   $('#btn-xml').disabled = gesperrt;
   $('#btn-bestaetigen').disabled = gesperrt;
+  $('#btn-extern').classList.toggle('hidden', gesperrt);
   $('#btn-entsperren').classList.toggle('hidden', !gesperrt);
 
   $('#dateien').innerHTML = d.dateien.length ? d.dateien.map((f) => `
@@ -167,7 +203,7 @@ function render() {
 
 const AKTIONEN = {
   korrektur: 'Tag korrigiert', korrektur_entfernt: 'Korrektur entfernt', xml_erstellt: 'XML erstellt',
-  upload_bestaetigt: 'Übermittlung bestätigt', korrektur_geoeffnet: 'Korrektur geöffnet', einstellungen: 'Einstellungen',
+  upload_bestaetigt: 'Übermittlung bestätigt', extern_gemeldet: 'Von Enilive gemeldet markiert', korrektur_geoeffnet: 'Korrektur geöffnet', einstellungen: 'Einstellungen',
 };
 
 async function ladeProtokoll() {
@@ -185,6 +221,7 @@ function beschreibe(p) {
   if (p.aktion === 'korrektur_entfernt') return `${d.tag}`;
   if (p.aktion === 'xml_erstellt') return `${d.datei}`;
   if (p.aktion === 'upload_bestaetigt') return `IUT ${d.ricevuta} · Imponibile ${d.imponibile} · Imposta ${d.imposta}`;
+  if (p.aktion === 'extern_gemeldet') return `IUT ${d.iut} · gemeldet am ${d.datum}`;
   if (p.aktion === 'korrektur_geoeffnet') return `– ${d.grund}`;
   return '';
 }
@@ -252,6 +289,22 @@ async function speichereEinstellungen(e) {
   } catch (err) { toast([err.message, ...(err.details || [])].join(' ')); }
 }
 
+function oeffneExtern() {
+  $('#ex-iut').value = '';
+  $('#ex-datum').value = '';
+  $('#dlg-extern').showModal();
+}
+
+async function speichereExtern(e) {
+  e.preventDefault();
+  try {
+    await api('POST', `/api/monat/${state.monat}/extern`, { benutzer: benutzer(), iut: $('#ex-iut').value, datum: $('#ex-datum').value });
+    $('#dlg-extern').close();
+    toast('Als von Enilive gemeldet markiert – Monat gesperrt.');
+    laden();
+  } catch (err) { toast(err.message); }
+}
+
 function oeffneUpload() {
   $('#up-iut').value = '';
   $('#dlg-upload').showModal();
@@ -307,6 +360,12 @@ $('#btn-einstellungen').onclick = oeffneEinstellungen;
 $('#btn-xml').onclick = erstelleXml;
 $('#btn-entsperren').onclick = entsperren;
 $('#btn-bestaetigen').onclick = () => { try { benutzer(); oeffneUpload(); } catch (err) { toast(err.message); } };
+$('#btn-extern').onclick = () => { try { benutzer(); oeffneExtern(); } catch (err) { toast(err.message); } };
+$('#ex-save').onclick = speichereExtern;
+$('#ue-tabelle tbody').onclick = (e) => {
+  const tr = e.target.closest('tr[data-monat]');
+  if (tr) { setMonat(tr.dataset.monat); window.scrollTo({ top: $('.monthbar').offsetTop - 12, behavior: 'smooth' }); }
+};
 $('#btn-drucken').onclick = () => window.print();
 $('#dezimal').value = store('dezimal') || ',';
 $('#dezimal').onchange = (e) => store('dezimal', e.target.value);

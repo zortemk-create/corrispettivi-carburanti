@@ -158,12 +158,18 @@ def monat_lesen(cur, monat):
     return antwort({
         'monat': monat,
         'status': monat_status(cur, m),
+        'meldung': meldung_zu(cur, m),
         'frist': cr.frist(m),
         'einstellungen_fehler': cr.pruefe_einstellungen(einst),
         'tage': tage,
         'summe': summen(tage),
         'dateien': dateien,
     })
+
+
+def meldung_zu(cur, m):
+    cur.execute('SELECT quelle, iut, gemeldet_am FROM corrispettivi.monate WHERE monat = %s AND iut IS NOT NULL', (m,))
+    return cur.fetchone()
 
 
 def letzte_meldung(cur, m):
@@ -305,12 +311,85 @@ def uebermittlung_bestaetigen(cur, monat):
     pruefe_offen(cur, m)
     _, name, summe = neue_version(cur, m, benutzer, iut)
     cur.execute(
-        '''INSERT INTO corrispettivi.monate (monat, status) VALUES (%s, 'uebermittelt')
-           ON CONFLICT (monat) DO UPDATE SET status = 'uebermittelt' ''',
-        (m,),
+        '''INSERT INTO corrispettivi.monate (monat, status, quelle, iut, gemeldet_am)
+           VALUES (%s, 'uebermittelt', 'selbst', %s, CURRENT_DATE)
+           ON CONFLICT (monat) DO UPDATE SET status = 'uebermittelt', quelle = 'selbst',
+                iut = EXCLUDED.iut, gemeldet_am = EXCLUDED.gemeldet_am''',
+        (m, iut),
     )
     protokolliere(cur, benutzer, 'upload_bestaetigt', m, datei=name, ricevuta=iut, **summe)
     return antwort({'ok': True})
+
+
+@app.post('/api/monat/<monat>/extern')
+@db_tx
+def extern_gemeldet(cur, monat):
+    """Merker: Der Monat wurde bereits von Enilive gemeldet (nicht ueber dieses Tool)."""
+    body = request.get_json(force=True)
+    benutzer = benutzer_aus(body)
+    iut = (body.get('iut') or '').strip().upper()
+    if not IUT_MUSTER.match(iut):
+        raise Fehler('Bitte die IUT angeben (19 Zeichen, z.B. 20261005M4152744735).')
+    try:
+        datum = cr.dt.date.fromisoformat(body.get('datum') or '')
+    except ValueError:
+        raise Fehler('Bitte das Datum der Meldung angeben.')
+    heute = cr.dt.date.today()
+    m = cr.parse_monat(monat)
+    if m >= heute.replace(day=1):
+        raise Fehler('Der Monat ist noch nicht abgeschlossen und kann nicht gemeldet sein.')
+    if datum > heute or datum <= cr.month_bounds(m)[1]:
+        raise Fehler('Das Meldedatum muss nach Monatsende und darf nicht in der Zukunft liegen.')
+    pruefe_offen(cur, m)
+    cur.execute(
+        '''INSERT INTO corrispettivi.monate (monat, status, quelle, iut, gemeldet_am)
+           VALUES (%s, 'uebermittelt', 'enilive', %s, %s)
+           ON CONFLICT (monat) DO UPDATE SET status = 'uebermittelt', quelle = 'enilive',
+                iut = EXCLUDED.iut, gemeldet_am = EXCLUDED.gemeldet_am''',
+        (m, iut, datum),
+    )
+    protokolliere(cur, benutzer, 'extern_gemeldet', m, quelle='enilive', iut=iut, datum=datum)
+    return antwort({'ok': True})
+
+
+@app.get('/api/uebersicht')
+@db_tx
+def uebersicht(cur):
+    """Meldestatus aller Monate (auch fuer externe Abfragen gedacht)."""
+    heute = cr.dt.date.today()
+    cur.execute('SELECT MIN(tag_date) AS d FROM public.tage')
+    erster = cur.fetchone()['d']
+    cur.execute('SELECT MIN(monat) AS m FROM corrispettivi.monate')
+    erfasst_ab = cur.fetchone()['m']
+    cur.execute('SELECT * FROM corrispettivi.monate')
+    markiert = {r['monat']: r for r in cur.fetchall()}
+    monate = []
+    if erster:
+        m = erster.replace(day=1)
+        while m <= heute.replace(day=1):
+            _, tage = cr.monatsdaten(cur, m)
+            mit_daten = [t for t in tage if t['melden']]
+            row = markiert.get(m)
+            gemeldet = letzte_meldung(cur, m)
+            aktuell = cr.snapshot(tage)
+            abw = sum(1 for iso in set(gemeldet) | set(aktuell) if not cr.gleich(gemeldet.get(iso), aktuell.get(iso)))                 if gemeldet else 0
+            status = cr.meldestatus(m, heute, bool(row and row['status'] == 'uebermittelt'),
+                                    bool(row and row['iut']), len(mit_daten), bool(erfasst_ab and m < erfasst_ab))
+            s = summen(tage)
+            monate.append({
+                'monat': m.strftime('%Y-%m'),
+                'status': status,
+                'quelle': row['quelle'] if row and row['iut'] else None,
+                'iut': row['iut'] if row else None,
+                'gemeldet_am': row['gemeldet_am'] if row else None,
+                'frist': cr.frist(m),
+                'tage_mit_daten': len(mit_daten),
+                'tage_gesamt': len(tage),
+                'brutto': s['brutto'], 'imponibile': s['imponibile'], 'imposta': s['imposta'],
+                'abweichungen': abw,
+            })
+            m = cr.month_bounds(m)[1] + cr.dt.timedelta(days=1)
+    return antwort({'heute': heute, 'monate': monate})
 
 
 @app.post('/api/monat/<monat>/entsperren')
