@@ -42,9 +42,11 @@ CREATE TABLE IF NOT EXISTS corrispettivi.dateien (
   erstellt_am TIMESTAMPTZ NOT NULL DEFAULT now(),
   hochgeladen_von TEXT,
   hochgeladen_am TIMESTAMPTZ,
-  ricevuta TEXT,                                  -- IUT / Protokollnummer der Uebermittlung
+  ricevuta TEXT,                                  -- IUT (Identificativo univoco dell'invio)
   UNIQUE (monat, version)
 );
+-- Momentaufnahme der gemeldeten Tageswerte, um spaetere Abweichungen zu erkennen
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS tage JSONB;
 
 -- Aenderungsprotokoll (wer hat wann was gemacht)
 CREATE TABLE IF NOT EXISTS corrispettivi.protokoll (

@@ -135,6 +135,25 @@ def validiere_xml(xml_bytes):
     return [f'Zeile {e.line}: {e.message}' for e in _schema.error_log]
 
 
+def snapshot(tage):
+    """Gemeldete Werte je Tag, als JSON-taugliches Dict (Strings mit 2 Nachkommastellen)."""
+    return {t['datum'].isoformat(): {'imponibile': f"{t['imponibile']:.2f}", 'imposta': f"{t['imposta']:.2f}"}
+            for t in tage}
+
+
+def gleich(a, b):
+    """Vergleicht zwei Snapshot-Eintraege nur nach Betraegen (die IUT bleibt unberuecksichtigt)."""
+    if not a or not b:
+        return a == b
+    return a['imponibile'] == b['imponibile'] and a['imposta'] == b['imposta']
+
+
+def frist(monat):
+    """Abgabefrist bei monatlicher IVA-Liquidation: letzter Tag des Folgemonats."""
+    _, last = month_bounds(monat)
+    return month_bounds(last + dt.timedelta(days=1))[1]
+
+
 def dateiname(einst, monat, version):
     return f"CORR_CARB_{einst['codice_ditta']}_{monat:%Y-%m}_v{version}.xml"
 

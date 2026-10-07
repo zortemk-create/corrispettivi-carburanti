@@ -25,7 +25,21 @@
     <input type="month" id="monat">
     <button id="next" class="ghost" aria-label="Folgemonat">›</button>
     <span id="status" class="badge"></span>
+    <span id="frist" class="muted"></span>
   </section>
+
+  <details class="card anleitung" id="anleitung">
+    <summary><h2>So meldest du den Monat im ADM-Portal</h2></summary>
+    <ol>
+      <li>Werte unten prüfen, Tage ohne Daten oder Ausreißer über <em>Ändern</em> korrigieren.</li>
+      <li>Im <a href="https://www.adm.gov.it" target="_blank" rel="noopener">Portale Unico Dogane e Monopoli</a> mit SPID/CNS anmelden →
+        <em>Servizi online</em> → <em>Corrispettivi Distributori Carburanti</em> → Ambiente <em>Esercizio</em> → Delegante und Codice Ditta wählen.</li>
+      <li><em>Acquisizione corrispettivi</em>: Monat/Jahr wählen. Für jeden Tag <strong>Imponibile</strong> und <strong>Imposta</strong> eintragen –
+        ein Klick auf einen Betrag in der Tabelle kopiert ihn in die Zwischenablage.</li>
+      <li><em>Salva</em> → <em>Invia</em>. Die angezeigte IUT (Identificativo univoco dell'invio) hier unter <em>Übermittlung bestätigen</em> eintragen.</li>
+      <li>Nach einigen Minuten unter <em>Interrogazione esiti</em> mit der IUT prüfen, dass keine Fehler gemeldet wurden.</li>
+    </ol>
+  </details>
 
   <div id="hinweise"></div>
 
@@ -42,7 +56,7 @@
         <thead>
           <tr>
             <th>Datum</th><th class="num">Liter</th><th class="num">Tagesabrechnung</th>
-            <th class="num">Corrispettivo lordo</th><th class="num">Imponibile</th><th class="num">Imposta</th>
+            <th class="num">Corrispettivo lordo</th><th class="num">Imponibile ⧉</th><th class="num">Imposta ⧉</th>
             <th>Quelle</th><th></th>
           </tr>
         </thead>
@@ -52,12 +66,17 @@
   </section>
 
   <section class="actions">
-    <button id="btn-xml" class="primary">XML für Monat erstellen</button>
+    <button id="btn-bestaetigen" class="primary">Übermittlung bestätigen (IUT)</button>
     <button id="btn-entsperren" class="ghost hidden">Korrektur öffnen</button>
+    <button id="btn-drucken" class="ghost">Drucken</button>
+    <button id="btn-xml" class="ghost">XML erstellen (Archiv)</button>
+    <label class="muted kopierformat">Kopierformat
+      <select id="dezimal"><option value=",">1234,56</option><option value=".">1234.56</option></select>
+    </label>
   </section>
 
   <section class="card">
-    <h2>Dateien &amp; Übermittlung</h2>
+    <h2>Übermittlungen &amp; Dateien</h2>
     <div id="dateien"></div>
   </section>
 
@@ -97,10 +116,10 @@
 
 <dialog id="dlg-upload">
   <form method="dialog">
-    <h3>Upload bestätigen</h3>
-    <p>Bestätige nur, wenn die Datei <strong id="up-datei"></strong> signiert und erfolgreich übermittelt wurde.
-       Der Monat wird danach gesperrt.</p>
-    <label>Ricevuta / IUT (optional)<input id="up-ricevuta" placeholder="Protokollnummer der Übermittlung"></label>
+    <h3>Übermittlung bestätigen</h3>
+    <p>Bestätige erst, wenn du die Werte im ADM-Portal mit <em>Invia</em> gesendet hast.
+       Die aktuellen Werte werden als gemeldet gespeichert und der Monat wird gesperrt.</p>
+    <label>IUT (Identificativo univoco dell'invio)<input id="up-iut" maxlength="19" placeholder="z.B. 20261102M4000000013" required></label>
     <div class="dlg-actions">
       <button value="cancel" class="ghost">Abbrechen</button>
       <button id="up-save" value="save" class="primary">Übermittlung bestätigen</button>

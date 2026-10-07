@@ -5,7 +5,7 @@ const eur = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' 
 const zahl = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
 const WT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
-const state = { monat: null, daten: null, tagEdit: null, uploadId: null };
+const state = { monat: null, daten: null, tagEdit: null };
 
 // ---------- Hilfsfunktionen ----------
 
@@ -94,6 +94,7 @@ function render() {
   const status = $('#status');
   status.className = `badge ${d.status}`;
   status.textContent = gesperrt ? 'Übermittelt · gesperrt' : 'Offen';
+  $('#frist').textContent = `Frist (IVA mensile): ${new Date(d.frist + 'T00:00:00').toLocaleDateString('de-DE')}`;
 
   const hinweise = [];
   if (d.einstellungen_fehler.length) {
@@ -103,6 +104,13 @@ function render() {
   const fehlend = d.tage.filter((t) => t.brutto_quelle == null && !t.korrektur && t.datum <= heute);
   if (fehlend.length) {
     hinweise.push(`<div class="hinweis">${fehlend.length} Tag(e) ohne Eintrag in der Tagesabrechnung – sie werden mit 0,00 € gemeldet (geschlossen/keine Abgabe). Bitte prüfen.</div>`);
+  }
+  const geaendert = d.tage.filter((t) => t.abweichung);
+  if (geaendert.length) {
+    hinweise.push(`<div class="hinweis bad">${geaendert.length} Tag(e) weichen von der letzten Übermittlung ab. Im ADM-Portal unter
+      <em>Annullamento corrispettivi</em> je Tag die angegebene IUT, Häkchen <em>Corrispettivi</em> und die Data di riferimento eintragen,
+      dann diese Tage neu senden und die neue IUT hier bestätigen:
+      <ul>${geaendert.map((t) => `<li>${new Date(t.datum + 'T00:00:00').toLocaleDateString('de-DE')} – IUT ${esc(t.gemeldet?.iut || '?')}</li>`).join('')}</ul></div>`);
   }
   $('#hinweise').innerHTML = hinweise.join('');
   const link = $('#link-einst');
@@ -117,17 +125,18 @@ function render() {
     const datum = new Date(t.datum + 'T00:00:00');
     const wt = datum.getDay();
     const cls = [wt === 0 || wt === 6 ? 'wochenende' : '', t.korrektur ? 'korrigiert' : '',
-      t.brutto_quelle == null && !t.korrektur && t.datum <= heute ? 'fehlt' : ''].join(' ');
+      t.brutto_quelle == null && !t.korrektur && t.datum <= heute ? 'fehlt' : '', t.abweichung ? 'abweichung' : ''].join(' ');
     let quelle = '<span class="tag">Tagesabrechnung</span>';
     if (t.korrektur) quelle = `<span class="tag manuell" title="${esc(t.korrektur.notiz)} – ${esc(t.korrektur.von)}, ${fmtZeit(t.korrektur.am)}">manuell · ${esc(t.korrektur.von)}</span>`;
     else if (t.brutto_quelle == null) quelle = t.datum <= heute ? '<span class="tag fehlt">keine Daten</span>' : '<span class="tag">–</span>';
+    if (t.abweichung) quelle += ` <span class="tag abweichung" title="Gemeldet: ${esc(t.gemeldet ? t.gemeldet.imponibile + ' / ' + t.gemeldet.imposta : '–')}">geändert seit Meldung</span>`;
     return `<tr class="${cls}">
       <td>${WT[wt]} ${datum.toLocaleDateString('de-DE')}</td>
       <td class="num">${t.liter == null ? '–' : zahl.format(num(t.liter))}</td>
       <td class="num">${fmtEur(t.brutto_quelle)}</td>
       <td class="num"><strong>${fmtEur(t.brutto)}</strong></td>
-      <td class="num">${fmtEur(t.imponibile)}</td>
-      <td class="num">${fmtEur(t.imposta)}</td>
+      <td class="num kopie" data-kopie="${t.imponibile}" title="Klicken zum Kopieren">${fmtEur(t.imponibile)}</td>
+      <td class="num kopie" data-kopie="${t.imposta}" title="Klicken zum Kopieren">${fmtEur(t.imposta)}</td>
       <td>${quelle}</td>
       <td>${gesperrt ? '' : `<button data-tag="${t.datum}">Ändern</button>`}</td>
     </tr>`;
@@ -135,36 +144,33 @@ function render() {
   $('#tabelle tbody').innerHTML = rows.join('');
   $('#tabelle tbody').onclick = (e) => {
     const b = e.target.closest('button[data-tag]');
-    if (b) oeffneTag(b.dataset.tag);
+    if (b) return oeffneTag(b.dataset.tag);
+    const k = e.target.closest('td[data-kopie]');
+    if (k) kopiere(k.dataset.kopie);
   };
 
   $('#btn-xml').disabled = gesperrt;
+  $('#btn-bestaetigen').disabled = gesperrt;
   $('#btn-entsperren').classList.toggle('hidden', !gesperrt);
 
-  const neueste = d.dateien[0]?.version;
   $('#dateien').innerHTML = d.dateien.length ? d.dateien.map((f) => `
     <div class="datei">
       <div>
         <strong>${esc(f.dateiname)}</strong>
         <div class="meta">Erstellt ${fmtZeit(f.erstellt_am)} von ${esc(f.erstellt_von)} · Lordo ${fmtEur(f.summe_brutto)} · Imponibile ${fmtEur(f.summe_imponibile)} · IVA ${fmtEur(f.summe_imposta)}</div>
         ${f.hochgeladen_am
-          ? `<div class="meta" style="color:var(--ok)">✓ Übermittelt bestätigt ${fmtZeit(f.hochgeladen_am)} von ${esc(f.hochgeladen_von)}${f.ricevuta ? ' · Ricevuta ' + esc(f.ricevuta) : ''}</div>`
-          : f.version !== neueste ? '<div class="meta">Ersetzt durch neuere Version</div>' : ''}
+          ? `<div class="meta" style="color:var(--ok)">✓ Übermittelt · IUT <strong>${esc(f.ricevuta)}</strong> · bestätigt ${fmtZeit(f.hochgeladen_am)} von ${esc(f.hochgeladen_von)}</div>`
+          : '<div class="meta">Nur Archiv-Datei, nicht als übermittelt bestätigt</div>'}
       </div>
       <div class="btns">
         <a href="/api/datei/${f.id}"><button type="button">Download XML</button></a>
-        ${!f.hochgeladen_am && f.version === neueste ? `<button class="primary" data-upload="${f.id}" data-name="${esc(f.dateiname)}">Upload bestätigen</button>` : ''}
       </div>
     </div>`).join('') : '<p class="muted">Noch keine Datei für diesen Monat erstellt.</p>';
-  $('#dateien').onclick = (e) => {
-    const b = e.target.closest('button[data-upload]');
-    if (b) oeffneUpload(Number(b.dataset.upload), b.dataset.name);
-  };
 }
 
 const AKTIONEN = {
   korrektur: 'Tag korrigiert', korrektur_entfernt: 'Korrektur entfernt', xml_erstellt: 'XML erstellt',
-  upload_bestaetigt: 'Upload bestätigt', korrektur_geoeffnet: 'Korrektur geöffnet', einstellungen: 'Einstellungen',
+  upload_bestaetigt: 'Übermittlung bestätigt', korrektur_geoeffnet: 'Korrektur geöffnet', einstellungen: 'Einstellungen',
 };
 
 async function ladeProtokoll() {
@@ -180,7 +186,8 @@ function beschreibe(p) {
   const d = p.details || {};
   if (p.aktion === 'korrektur') return `${d.tag}: ${d.alt ?? 'Tagesabrechnung'} → ${d.neu}${d.notiz ? ' (' + d.notiz + ')' : ''}`;
   if (p.aktion === 'korrektur_entfernt') return `${d.tag}`;
-  if (p.aktion === 'xml_erstellt' || p.aktion === 'upload_bestaetigt') return `${d.datei}${d.ricevuta ? ' · ' + d.ricevuta : ''}`;
+  if (p.aktion === 'xml_erstellt') return `${d.datei}`;
+  if (p.aktion === 'upload_bestaetigt') return `IUT ${d.ricevuta} · Imponibile ${d.imponibile} · Imposta ${d.imposta}`;
   if (p.aktion === 'korrektur_geoeffnet') return `– ${d.grund}`;
   return '';
 }
@@ -248,17 +255,25 @@ async function speichereEinstellungen(e) {
   } catch (err) { toast([err.message, ...(err.details || [])].join(' ')); }
 }
 
-function oeffneUpload(id, name) {
-  state.uploadId = id;
-  $('#up-datei').textContent = name;
-  $('#up-ricevuta').value = '';
+function oeffneUpload() {
+  $('#up-iut').value = '';
   $('#dlg-upload').showModal();
+}
+
+async function kopiere(wert) {
+  const text = $('#dezimal').value === ',' ? wert.replace('.', ',') : wert;
+  try {
+    await navigator.clipboard.writeText(text);
+    toast(`Kopiert: ${text}`);
+  } catch (_) {
+    toast(`Kopieren nicht möglich – Wert: ${text}`);
+  }
 }
 
 async function bestaetigeUpload(e) {
   e.preventDefault();
   try {
-    await api('POST', `/api/datei/${state.uploadId}/bestaetigen`, { benutzer: benutzer(), ricevuta: $('#up-ricevuta').value });
+    await api('POST', `/api/monat/${state.monat}/bestaetigen`, { benutzer: benutzer(), iut: $('#up-iut').value });
     $('#dlg-upload').close();
     toast('Übermittlung bestätigt – Monat gesperrt.');
     laden();
@@ -268,7 +283,7 @@ async function bestaetigeUpload(e) {
 async function erstelleXml() {
   try {
     const r = await api('POST', `/api/monat/${state.monat}/xml`, { benutzer: benutzer() });
-    toast(`${r.dateiname} erstellt und gegen das ADM-Schema geprüft.`);
+    toast(`${r.dateiname} erstellt und gegen das ADM-Schema geprüft (Archiv).`);
     laden();
   } catch (err) { zeigeFehler(err); }
 }
@@ -294,6 +309,10 @@ $('#monat').onchange = (e) => e.target.value && setMonat(e.target.value);
 $('#btn-einstellungen').onclick = oeffneEinstellungen;
 $('#btn-xml').onclick = erstelleXml;
 $('#btn-entsperren').onclick = entsperren;
+$('#btn-bestaetigen').onclick = () => { try { benutzer(); oeffneUpload(); } catch (err) { toast(err.message); } };
+$('#btn-drucken').onclick = () => window.print();
+$('#dezimal').value = store('dezimal') || ',';
+$('#dezimal').onchange = (e) => store('dezimal', e.target.value);
 $('#tag-save').onclick = speichereTag;
 $('#tag-reset').onclick = resetTag;
 $('#e-save').onclick = speichereEinstellungen;

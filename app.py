@@ -1,5 +1,6 @@
 import json
 import os
+import re
 from decimal import Decimal, InvalidOperation
 from functools import wraps
 
@@ -144,24 +145,40 @@ def monat_lesen(cur, monat):
         (m,),
     )
     dateien = cur.fetchall()
-    summe = {
-        'brutto': sum((t['brutto'] for t in tage), Decimal('0')),
-        'imponibile': sum((t['imponibile'] for t in tage), Decimal('0')),
-        'imposta': sum((t['imposta'] for t in tage), Decimal('0')),
-    }
+    gemeldet = letzte_meldung(cur, m)
+    aktuell = cr.snapshot(tage)
     for t in tage:
         k = t.pop('korrektur')
         t['korrektur'] = None if not k else {
             'notiz': k['notiz'], 'von': k['geaendert_von'], 'am': k['geaendert_am'],
         }
+        iso = t['datum'].isoformat()
+        t['gemeldet'] = gemeldet.get(iso)
+        t['abweichung'] = bool(gemeldet) and not cr.gleich(gemeldet.get(iso), aktuell[iso])
     return antwort({
         'monat': monat,
         'status': monat_status(cur, m),
+        'frist': cr.frist(m),
         'einstellungen_fehler': cr.pruefe_einstellungen(einst),
         'tage': tage,
-        'summe': summe,
+        'summe': summen(tage),
         'dateien': dateien,
     })
+
+
+def letzte_meldung(cur, m):
+    cur.execute(
+        '''SELECT tage FROM corrispettivi.dateien
+            WHERE monat = %s AND hochgeladen_am IS NOT NULL AND tage IS NOT NULL
+            ORDER BY version DESC LIMIT 1''',
+        (m,),
+    )
+    row = cur.fetchone()
+    return row['tage'] if row else {}
+
+
+def summen(tage):
+    return {k: sum((t[k] for t in tage), Decimal('0')) for k in ('brutto', 'imponibile', 'imposta')}
 
 
 @app.put('/api/tag/<datum>')
@@ -205,14 +222,14 @@ def tag_zuruecksetzen(cur, datum):
     return antwort({'ok': True})
 
 
-# ---------- XML erzeugen / bestaetigen ----------
+# ---------- XML erzeugen / Uebermittlung bestaetigen ----------
 
-@app.post('/api/monat/<monat>/xml')
-@db_tx
-def xml_erzeugen(cur, monat):
-    benutzer = benutzer_aus(request.get_json(force=True))
-    m = cr.parse_monat(monat)
-    pruefe_offen(cur, m)
+IUT_MUSTER = re.compile(r'^[0-9]{8}[A-Z0-9]{11}$')
+
+
+def neue_version(cur, m, benutzer, iut=None):
+    """Erzeugt eine neue, gegen das XSD gepruefte XML-Version des Monats.
+    Mit IUT wird sie zugleich als uebermittelt gespeichert (Momentaufnahme der gemeldeten Werte)."""
     einst, tage = cr.monatsdaten(cur, m)
     fehler = cr.pruefe_einstellungen(einst)
     if fehler:
@@ -226,17 +243,37 @@ def xml_erzeugen(cur, monat):
     cur.execute('SELECT COALESCE(MAX(version), 0) + 1 AS v FROM corrispettivi.dateien WHERE monat = %s', (m,))
     version = cur.fetchone()['v']
     name = cr.dateiname(einst, m, version)
-    summe = {k: sum((t[k] for t in tage), Decimal('0')) for k in ('brutto', 'imponibile', 'imposta')}
+    summe = summen(tage)
+    snap = cr.snapshot(tage)
+    if iut:
+        # Je Tag merken, mit welcher IUT der aktuelle Wert gemeldet wurde (noetig fuer ein spaeteres Annullamento)
+        vorher = letzte_meldung(cur, m)
+        for iso, werte in snap.items():
+            alt = vorher.get(iso)
+            werte['iut'] = alt['iut'] if alt and alt.get('iut') and cr.gleich(alt, werte) else iut
     cur.execute(
         '''INSERT INTO corrispettivi.dateien
-             (monat, version, dateiname, xml, summe_brutto, summe_imponibile, summe_imposta, erstellt_von)
-           VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING id''',
-        (m, version, name, xml.decode('utf-8'), summe['brutto'], summe['imponibile'], summe['imposta'], benutzer),
+             (monat, version, dateiname, xml, summe_brutto, summe_imponibile, summe_imposta, erstellt_von, tage,
+              hochgeladen_von, hochgeladen_am, ricevuta)
+           VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s,
+                   %s, CASE WHEN %s::text IS NULL THEN NULL ELSE now() END, %s) RETURNING id''',
+        (m, version, name, xml.decode('utf-8'), summe['brutto'], summe['imponibile'], summe['imposta'], benutzer,
+         json.dumps(snap), benutzer if iut else None, iut, iut),
     )
     datei_id = cur.fetchone()['id']
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     with open(os.path.join(OUTPUT_DIR, name), 'wb') as f:
         f.write(xml)
+    return datei_id, name, summe
+
+
+@app.post('/api/monat/<monat>/xml')
+@db_tx
+def xml_erzeugen(cur, monat):
+    benutzer = benutzer_aus(request.get_json(force=True))
+    m = cr.parse_monat(monat)
+    pruefe_offen(cur, m)
+    datei_id, name, summe = neue_version(cur, m, benutzer)
     protokolliere(cur, benutzer, 'xml_erstellt', m, datei=name, **summe)
     return antwort({'ok': True, 'id': datei_id, 'dateiname': name})
 
@@ -252,31 +289,24 @@ def datei_download(cur, datei_id):
                     headers={'Content-Disposition': f'attachment; filename="{row["dateiname"]}"'})
 
 
-@app.post('/api/datei/<int:datei_id>/bestaetigen')
+@app.post('/api/monat/<monat>/bestaetigen')
 @db_tx
-def upload_bestaetigen(cur, datei_id):
+def uebermittlung_bestaetigen(cur, monat):
+    """Der Benutzer hat die Werte im ADM-Portal eingegeben und gesendet; hier wird die IUT festgehalten."""
     body = request.get_json(force=True)
     benutzer = benutzer_aus(body)
-    ricevuta = (body.get('ricevuta') or '').strip()
-    cur.execute('SELECT monat, version, dateiname, hochgeladen_am FROM corrispettivi.dateien WHERE id = %s', (datei_id,))
-    datei = cur.fetchone()
-    if not datei:
-        raise Fehler('Datei nicht gefunden.', 404)
-    if datei['hochgeladen_am']:
-        raise Fehler('Diese Datei wurde bereits als hochgeladen bestätigt.', 409)
-    cur.execute('SELECT MAX(version) AS v FROM corrispettivi.dateien WHERE monat = %s', (datei['monat'],))
-    if cur.fetchone()['v'] != datei['version']:
-        raise Fehler('Nur die neueste Version eines Monats kann bestätigt werden.', 409)
-    cur.execute(
-        'UPDATE corrispettivi.dateien SET hochgeladen_von = %s, hochgeladen_am = now(), ricevuta = %s WHERE id = %s',
-        (benutzer, ricevuta or None, datei_id),
-    )
+    iut = (body.get('iut') or '').strip().upper()
+    if not IUT_MUSTER.match(iut):
+        raise Fehler('Bitte die IUT aus dem ADM-Portal angeben (19 Zeichen, z.B. 20261102M4000000013).')
+    m = cr.parse_monat(monat)
+    pruefe_offen(cur, m)
+    _, name, summe = neue_version(cur, m, benutzer, iut)
     cur.execute(
         '''INSERT INTO corrispettivi.monate (monat, status) VALUES (%s, 'uebermittelt')
            ON CONFLICT (monat) DO UPDATE SET status = 'uebermittelt' ''',
-        (datei['monat'],),
+        (m,),
     )
-    protokolliere(cur, benutzer, 'upload_bestaetigt', datei['monat'], datei=datei['dateiname'], ricevuta=ricevuta)
+    protokolliere(cur, benutzer, 'upload_bestaetigt', m, datei=name, ricevuta=iut, **summe)
     return antwort({'ok': True})
 
 

@@ -1,29 +1,48 @@
 # Corrispettivi Carburanti
 
-Erzeugt die monatliche Meldung der Tageseinnahmen (Corrispettivi giornalieri) aus dem Verkauf von
-Benzina/Gasolio als XML nach dem **Tracciato unico – Cessione carburanti & Registro C/S** der
-Agenzia delle Dogane e dei Monopoli (ADM) bzw. Agenzia delle Entrate.
+Dashboard für die monatliche Meldung der Tageseinnahmen (Corrispettivi giornalieri) aus dem Verkauf
+von Benzina/Gasolio an die Agenzia delle Dogane e dei Monopoli (ADM), die die Daten an die
+Agenzia delle Entrate weitergibt. Ersetzt die bisherige automatische Meldung durch Enilive.
 
 Die Werte werden automatisch aus der Datenbank der **Tagesabrechnung** gelesen
 (`public.tage` / `public.tag_pumps`: Liter je Zapfsäule × Tagespreis je Sorte).
 
-## Ablauf
+## Monatlicher Ablauf (manuell, ca. 15 Minuten)
 
-1. Dashboard öffnen, Monat wählen (Standard: Vormonat).
+1. Dashboard öffnen – es zeigt standardmäßig den Vormonat und die Frist.
 2. Werte prüfen. Gelb = Tag ohne Eintrag in der Tagesabrechnung (wird mit 0,00 € gemeldet).
-3. Bei Bedarf einzelne Tage über **Ändern** korrigieren (mit Notiz; wird protokolliert,
-   jederzeit auf den Wert der Tagesabrechnung zurücksetzbar).
-4. **XML für Monat erstellen** – die Datei wird gegen das offizielle XSD geprüft, versioniert
-   gespeichert (DB + Ordner `output/`) und kann heruntergeladen werden.
-5. Datei signieren (XAdES-BES enveloped, siehe unten) und übermitteln.
-6. **Upload bestätigen** (optional mit Ricevuta/IUT) – der Monat wird gesperrt.
-   Korrekturen danach nur über **Korrektur öffnen** mit Begründung.
+   Achtung: Fehlt ein Tag, enthält der Folgetag meist die Liter beider Tage – dann über
+   **Ändern** aufteilen (mit Notiz; wird protokolliert, jederzeit zurücksetzbar).
+3. Im **Portale Unico Dogane e Monopoli** (SPID/CNS) → *Servizi online* →
+   *Corrispettivi Distributori Carburanti* → *Acquisizione corrispettivi* Monat/Jahr wählen und je Tag
+   **Imponibile** und **Imposta** eintragen. Klick auf einen Betrag im Dashboard kopiert ihn
+   (Kopierformat `1234,56` oder `1234.56` wählbar).
+4. *Salva* → *Invia*. Die angezeigte **IUT** im Dashboard unter **Übermittlung bestätigen** eintragen.
+   Die gemeldeten Werte werden je Tag mit IUT gespeichert und der Monat gesperrt.
+5. Im Portal unter *Interrogazione esiti* prüfen, dass keine Fehler gemeldet wurden.
+
+### Korrektur nach der Meldung
+
+**Korrektur öffnen** (mit Begründung) → Tag ändern. Das Dashboard zeigt jeden abweichenden Tag
+mit der IUT, unter der er gemeldet wurde. Im Portal unter *Annullamento corrispettivi* diese IUT,
+Häkchen *Corrispettivi* und die Data di riferimento angeben, danach nur diese Tage neu senden und
+die neue IUT bestätigen. (Ein bereits gemeldeter Tag wird sonst mit „D001 Data di riferimento già
+acquisita“ abgelehnt.)
+
+## Voraussetzungen / Umstellung von Enilive
+
+- Im PUDM über MAU das Profil **`dlr_distributori`** für den Gestore (oder eine beauftragte Person)
+  beantragen; Details in `docs/adm/Nota_369012RU_2020-10-23_WebApplication.pdf`.
+- Mit Enilive einen **Stichtag** vereinbaren, ab dem Enilive nicht mehr meldet. Doppelte Meldungen
+  werden von der ADM abgelehnt bzw. führen zu Abweichungen.
+- Für die Web-Anwendung ist keine digitale Signatur nötig (Login per SPID/CNS).
 
 ## Berechnung
 
 - Corrispettivo lordo je Tag = Σ (Zählerstand neu − alt) × Tagespreis der Sorte (ssp, d, blu)
 - Imponibile = lordo ÷ (1 + IVA-Satz), auf Cent gerundet; Imposta = lordo − Imponibile
 - Nur Treibstoff. Nebenumsätze (Getränke, Öl, Zubehör) gehören nicht in diese Meldung.
+- Frist bei monatlicher IVA-Liquidation: letzter Tag des Folgemonats.
 
 ## Installation
 
@@ -41,25 +60,19 @@ Einmalig unter **Einstellungen** eintragen: Partita IVA Gestore, Codice Ditta de
 
 Tests: `python -m unittest discover -s tests`
 
-## Übermittlung (wichtig)
+## XML / spätere Automatisierung
 
-Laut ADM-Handbuch (`docs/`) wird die Datei über den **Web-Service der ADM**
-(`invioDistributoriCarburanti`) übermittelt und muss **digital signiert** sein
-(XAdES-BES, enveloped, `ds:Signature` als letztes Element mit `Id`-Attribut,
-Zertifikat eines qualifizierten Anbieters). Für den Web-Service braucht es zusätzlich ein
-Authentifizierungs-Zertifikat aus dem PUDM (Profil `dlr_gestione_certificati_aut`).
-
-Aktuell erzeugt das Tool die **unsignierte**, schema-gültige XML. Signieren erfolgt mit der
-eigenen Signatur-Software (z.B. Firma-Digitale-Karte/Token).
-
-### Ausbaustufe Automatisierung
-
-- Signatur per Token/Zertifikat direkt im Tool (XAdES-BES)
-- Versand über den ADM-Web-Service inkl. Abruf des Esito (`xsd/Esito.xsd`)
-- Geplanter Lauf (z.B. am 1. Werktag des Monats Datei erstellen + Benachrichtigung)
+Bei jeder Bestätigung (und über **XML erstellen (Archiv)**) wird zusätzlich die XML nach dem
+**Tracciato unico – Cessione carburanti** erzeugt, gegen das offizielle XSD geprüft und versioniert
+abgelegt (DB + `output/`). Sie ist die Grundlage für den automatischen Versand über den
+ADM-Web-Service `invioDistributoriCarburanti`. Dafür nötig: XAdES-BES-Signatur (enveloped) und ein
+Authentifizierungs-Zertifikat aus dem PUDM (*Gestione Certificati*). WSDL und Esito-Spezifikation
+liegen in `docs/adm/`.
 
 ## Quellen / Spezifikation (in `docs/` und `xsd/`)
 
 - Tracciato unico cessione carburanti, Versione 20.12.2019 (Agenzia delle Entrate)
 - XSD DistributoriCarburanti, Stand 09.06.2022 (ADM)
 - Manuale Utente Distributori Carburante, Stand 27.12.2021 (ADM)
+- Nota ADM 369012/RU vom 23.10.2020 – Web-Anwendung Corrispettivi Distributori Carburanti
+- WSDL ContabilitaDistributoriCarburanti, File di Esito, Annullamento (ADM)

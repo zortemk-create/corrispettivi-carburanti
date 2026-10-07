@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns="http://ws.sogei.it/output/" targetNamespace="http://ws.sogei.it/output/" elementFormDefault="qualified">
+	<xs:complexType name="Risposta">
+		<xs:sequence>
+			<xs:element name="IUT">
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="20"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="esito" type="esitoType"/>
+			<xs:element name="data" type="xs:base64Binary" minOccurs="0"/>
+			<xs:element name="dataRegistrazione" type="xs:date"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="esitoType">
+		<xs:sequence>
+			<xs:element name="codice" type="xs:string"/>
+			<xs:element name="messaggio" type="xs:string" maxOccurs="unbounded"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:element name="Output" type="Risposta"/>
+</xs:schema>

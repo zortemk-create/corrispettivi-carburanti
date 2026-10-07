@@ -48,5 +48,17 @@ class XmlTest(unittest.TestCase):
         self.assertEqual(len(cr.pruefe_einstellungen({'piva_gestore': '', 'codice_ditta': '', 'piva_marchio': ''})), 3)
 
 
+class HilfsTest(unittest.TestCase):
+    def test_frist_letzter_tag_folgemonat(self):
+        self.assertEqual(cr.frist(dt.date(2026, 1, 1)), dt.date(2026, 2, 28))
+        self.assertEqual(cr.frist(dt.date(2026, 12, 1)), dt.date(2027, 1, 31))
+
+    def test_gleich_ignoriert_iut(self):
+        a = {'imponibile': '1.00', 'imposta': '0.22', 'iut': 'X'}
+        self.assertTrue(cr.gleich(a, {'imponibile': '1.00', 'imposta': '0.22'}))
+        self.assertFalse(cr.gleich(a, {'imponibile': '1.01', 'imposta': '0.22'}))
+        self.assertFalse(cr.gleich(None, a))
+
+
 if __name__ == '__main__':
     unittest.main()
