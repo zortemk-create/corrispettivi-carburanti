@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Corrispettivi Carburanti</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand">
+    <h1>Corrispettivi Carburanti</h1>
+    <span class="sub">Monatsmeldung Benzina/Gasolio · Tracciato unico ADM</span>
+  </div>
+  <div class="user">
+    <label for="benutzer">Benutzer</label>
+    <input id="benutzer" placeholder="Name" autocomplete="name">
+    <button id="btn-einstellungen" class="ghost">Einstellungen</button>
+  </div>
+</header>
+
+<main>
+  <section class="monthbar">
+    <button id="prev" class="ghost" aria-label="Vormonat">‹</button>
+    <input type="month" id="monat">
+    <button id="next" class="ghost" aria-label="Folgemonat">›</button>
+    <span id="status" class="badge"></span>
+  </section>
+
+  <div id="hinweise"></div>
+
+  <section class="kpis">
+    <div class="kpi"><span>Corrispettivi lordo</span><strong id="k-brutto">–</strong></div>
+    <div class="kpi"><span>Imponibile</span><strong id="k-imponibile">–</strong></div>
+    <div class="kpi"><span>Imposta (IVA)</span><strong id="k-imposta">–</strong></div>
+    <div class="kpi"><span>Tage ohne Daten</span><strong id="k-fehlend">–</strong></div>
+  </section>
+
+  <section class="card">
+    <div class="tablewrap">
+      <table id="tabelle">
+        <thead>
+          <tr>
+            <th>Datum</th><th class="num">Liter</th><th class="num">Tagesabrechnung</th>
+            <th class="num">Corrispettivo lordo</th><th class="num">Imponibile</th><th class="num">Imposta</th>
+            <th>Quelle</th><th></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="actions">
+    <button id="btn-xml" class="primary">XML für Monat erstellen</button>
+    <button id="btn-entsperren" class="ghost hidden">Korrektur öffnen</button>
+  </section>
+
+  <section class="card">
+    <h2>Dateien &amp; Übermittlung</h2>
+    <div id="dateien"></div>
+  </section>
+
+  <details class="card">
+    <summary><h2>Protokoll</h2></summary>
+    <div id="protokoll"></div>
+  </details>
+</main>
+
+<dialog id="dlg-tag">
+  <form method="dialog">
+    <h3 id="tag-titel">Tag korrigieren</h3>
+    <p class="muted" id="tag-quelle"></p>
+    <label>Corrispettivo lordo (€)<input id="tag-brutto" inputmode="decimal" required></label>
+    <label>Notiz / Grund<input id="tag-notiz" placeholder="z.B. Zählerstand nachkorrigiert"></label>
+    <div class="dlg-actions">
+      <button value="cancel" class="ghost">Abbrechen</button>
+      <button id="tag-reset" type="button" class="ghost danger">Auf Tagesabrechnung zurücksetzen</button>
+      <button id="tag-save" value="save" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-einst">
+  <form method="dialog">
+    <h3>Einstellungen (Anagrafica)</h3>
+    <label>Partita IVA Gestore<input id="e-piva-gestore" maxlength="11" inputmode="numeric"></label>
+    <label>Codice Ditta Impianto (ADM)<input id="e-codice-ditta" maxlength="13" placeholder="IT00XXX00000X"></label>
+    <label>Partita IVA Marchio (Bandiera)<input id="e-piva-marchio" maxlength="11" inputmode="numeric"></label>
+    <label>IVA-Satz (%)<input id="e-iva" inputmode="decimal"></label>
+    <div class="dlg-actions">
+      <button value="cancel" class="ghost">Abbrechen</button>
+      <button id="e-save" value="save" class="primary">Speichern</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="dlg-upload">
+  <form method="dialog">
+    <h3>Upload bestätigen</h3>
+    <p>Bestätige nur, wenn die Datei <strong id="up-datei"></strong> signiert und erfolgreich übermittelt wurde.
+       Der Monat wird danach gesperrt.</p>
+    <label>Ricevuta / IUT (optional)<input id="up-ricevuta" placeholder="Protokollnummer der Übermittlung"></label>
+    <div class="dlg-actions">
+      <button value="cancel" class="ghost">Abbrechen</button>
+      <button id="up-save" value="save" class="primary">Übermittlung bestätigen</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast" role="status"></div>
+<script src="/static/app.js"></script>
+</body>
+</html>

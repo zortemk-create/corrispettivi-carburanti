@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2007 (http://www.altova.com) by vcipriani (EMBRACE) -->
+<xs:schema xmlns="http://dichiarazioni.distributoricarburanti.dogane.finanze.it" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://dichiarazioni.distributoricarburanti.dogane.finanze.it" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:element name="AnnullamentoDistributoriCarburanti">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="IUT">
+					<xs:annotation>
+						<xs:documentation>identificativo univoco del messaggio da annullare.</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:string">
+							<xs:minLength value="19"/>
+							<xs:maxLength value="19"/>
+							<xs:pattern value="([0-9]{8}[A-Z]{1}[0-9]{10})"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+				<xs:element name="Sezione" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>codice della sezione del tracciato che si vuole annullare: 1= "PeriodoInattivita"; 2= "CorrispettiviGiornalieri"; 3= "Registro"; 4= "ID_PC"; se non specificata, l'annullamento riguarderà tutte le sezioni (e la/e data/e di riferimento eventualmente indicata/e) previste nel messaggio identificato dallo IUT.</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:positiveInteger">
+							<xs:enumeration value="1"/>
+							<xs:enumeration value="2"/>
+							<xs:enumeration value="3"/>
+							<xs:enumeration value="4"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+				<xs:element name="DataRiferimento" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>data cui si riferiscono le informazioni che si intendono annullare; non prevista per Sezione=1 ("PeriodoInattivita"). Se non specificata, l'annullamento riguarderà tutte le date di riferimento inviate con il messaggio identificato dallo IUT.</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:union memberTypes="xs:dateTime">
+							<xs:simpleType>
+								<xs:restriction base="xs:string">
+									<xs:length value="0"/>
+								</xs:restriction>
+							</xs:simpleType>
+						</xs:union>
+					</xs:simpleType>
+				</xs:element>
+				<xs:element name="Motivazione" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>motivazione della richiesta di annullamento. Obbligatoria solo nel caso in cui la richiesta di annullamento riguardi dati del Registro, sia se espressamente indicato (specificando Sezione='3)' sia se precedentemente comunicati con riferimento alla Data e/o allo IUT indicati.</xs:documentation>
+					</xs:annotation>
+					<xs:simpleType>
+						<xs:restriction base="xs:string">
+							<xs:minLength value="0"/>
+							<xs:maxLength value="500"/>
+							<xs:pattern value="[A-Za-z0-9àèéìòù .,;:+_*\-()='%\\/]{1,500}"/>
+						</xs:restriction>
+					</xs:simpleType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

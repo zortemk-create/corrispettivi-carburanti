@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2007 (http://www.altova.com) by vcipriani (EMBRACE) -->
+<xs:schema xmlns="http://dichiarazioni.distributoricarburanti.dogane.finanze.it" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://dichiarazioni.distributoricarburanti.dogane.finanze.it" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:include schemaLocation="DistributoriCarburantiComplexTypes.xsd"/>
+	<xs:element name="DatiDistributoriCarburanti">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="AnagraficaGestoreImpiantoDiDistribuzioneStradaleDiCarburanti">
+					<xs:annotation>
+						<xs:documentation>Elementi identificativi del soggetto passivo IVA obbligato alla trasmissione dei dati dei corrispettivi (Gestore), dell’Impianto Di Distribuzione Stradale Di Carburanti erogante e del marchio (cd. bandiera)</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="CodiceIvaGestore" type="codiceIvaTypeObb">
+								<xs:annotation>
+									<xs:documentation>Codice identificativo IVA del gestore. Blocco obbligatorio che ospita l'identificativo del soggetto ai fini IVA. È composto da due elementi: il primo identifica lo Stato di residenza del soggetto (può essere solo 'IT'), il secondo il numero di partita IVA (per i soggetti residenti all'estero è quella con la quale sono fiscalmente identificati in Italia).</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="CodiceDittaImpiantoDiDistribuzioneStradaleDiCarburanti" type="codiceAccisaTypeObb">
+								<xs:annotation>
+									<xs:documentation>Identificativo della sede di rilevazione dei dati. Va indicato il codice ditta (codice univoco assegnato dall’Agenzia delle dogane e monopoli a ciascun Impianto Di Distribuzione Stradale Di Carburanti) presente nella licenza, nel formato IT00……... </xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="CodiceIvaMarchio" type="codiceIvaTypeObb">
+								<xs:annotation>
+									<xs:documentation>Codice identificativo IVA del marchio.Elemento da valorizzare soltanto se diverso da quello indicato in CodiceIvaGestore. È composto da due elementi: il primo, identifica lo Stato di residenza del soggetto (può essere solo 'IT'); il secondo, conterrà il numero di partita IVA (per i soggetti residenti all'estero è quella con la quale sono fiscalmente identificati in Italia).</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="PeriodoInattivita" minOccurs="0">
+					<xs:annotation>
+						<xs:documentation>Sezione da valorizzare per comunicare un eventuale periodo di inattività del singolo impianto di distribuzione stradale di carburanti. Se è comunicato il periodo di inattività non è previsto l’invio di dati contabili giornalieri riferiti ad operazioni effettuate tra l’inizio e la fine del periodo di inattività. Nel caso vengano inviati dati contabili giornalieri riferiti ad una data/ora  precedente alla data fine del periodo di inattività, la stessa decade. 
+ll periodo di inattività deve essere comunicato entro le ore 23:59:59 del giorno antecedente la data di inizio. La data di inizio periodo di inattività può essere comunicata anche tramite un messaggio contenente i soli dati dell’”Anagrafica Gestore” e della sezione “Periodo Inattività” con almeno la “data inizio” impostata. La data di fine periodo di inattività, qualora non nota al momento della comunicazione dell’inizio periodo di inattività, può essere comunicata con l’invio di un messaggio successivo contenente i soli dati dell’”Anagrafica Gestore” e della sezione “Periodo Inattività” con la “data fine” impostata.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="DataInizio" type="dataTimeTypeObb"/>
+							<xs:element name="DataFine" type="dataTimeType"/>
+							<xs:element name="Motivazione" type="motivazioneTypeObb"/>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+				<xs:element name="DatiGiornalieri" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>Questa sezione può contenere un elemento per ciascuna giornata cui si riferiscono i dati presenti in una o più delle seguenti sottosezioni: "CorrispettiviGiornalieri”, "Registro” e "ID_PC”.</xs:documentation>
+					</xs:annotation>
+					<xs:complexType>
+						<xs:sequence>
+							<xs:element name="DataRiferimento" type="dataTimeTypeObb">
+								<xs:annotation>
+									<xs:documentation>Data di riferimento dei valori inseriti in una o più delle successive sezioni del tracciato, univoca all’interno del file. Se valorizzata, devono essere presenti i dati di almeno una delle sezioni "CorrispettiviGiornalieri", "Registro" e "ID_PC". L’ora deve essere specificata soltanto ove la data di riferimento ricada in Periodi di inattività dichiarati, altrimenti indicare 00:00:00.</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="CorrispettiviGiornalieri" type="CorrispettiviGiornalieriType" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>Dati dei corrispettivi (ex art. 2, comma 1-bis, D.Lgs. n. 127/2015) al lordo dei corrispettivi certificati con fattura.I dati indicati in questa sezione sono riferiti a tutte le operazioni effettuate dalle 00:00:00 alle 23.59:59 della data indicata in DataRiferimento</xs:documentation>
+								</xs:annotation>
+							</xs:element>
+							<xs:element name="Registro" minOccurs="0">
+								<xs:annotation>
+									<xs:documentation>I dati indicati in questa sezione sono riferiti a tutte le operazioni effettuate dalle 00:00:00 alle 23:59:59 della data indicata in DataRiferimento</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="Combinazione" type="CombinazioneType" maxOccurs="unbounded">
+											<xs:annotation>
+												<xs:documentation>Nel primo invio dei dati del registro telematico, successivo all'autorizzazione dell'Ufficio, debbono essere forniti, per ciascun prodotto, i dati della giacenza iniziale (campo 3.3.1.2.QuantitaGiacenza) e le letture dei totalizzatori (vedi campi TotalizzatoriColonnine) riferite alle ore 23:59:59 del giorno (campo 3.1DataRiferimento) precedente l'inizio della tenuta del Registro Telematico (vale a dire l'ultimo giorno di utilizzo del registro cartaceo). Tali dati dovranno essere gli unici trasmessi con riferimento alla sezione e al giorno (campo 3.1DataRiferimento) precedente l'inizio della tenuta del Registro Telematico. Il valore del campo 3.3.1.2.QuantitaGiacenza costituisce il valore di inizializzazione della sezione di registro telematico relativa al prodotto e deve essere uguale al valore di chiusura della sezione del registro cartaceo per il medesimo prodotto.</xs:documentation>
+											</xs:annotation>
+										</xs:element>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+							<xs:element name="ID_PC" minOccurs="0" maxOccurs="unbounded">
+								<xs:annotation>
+									<xs:documentation>Sezione predisposta per eventuale utilizzo al fine dell’interoperabilità con il MISE</xs:documentation>
+								</xs:annotation>
+								<xs:complexType>
+									<xs:sequence>
+										<xs:element name="TC" type="tipoCarburanteTypeObb"/>
+										<xs:element name="P" type="decimal11-3TypeObb"/>
+										<xs:element name="SS">
+											<xs:simpleType>
+												<xs:restriction base="xs:positiveInteger">
+													<xs:enumeration value="1"/>
+													<xs:enumeration value="2"/>
+												</xs:restriction>
+											</xs:simpleType>
+										</xs:element>
+										<xs:element name="OC" type="dataTimeTypeObb"/>
+									</xs:sequence>
+								</xs:complexType>
+							</xs:element>
+						</xs:sequence>
+					</xs:complexType>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>

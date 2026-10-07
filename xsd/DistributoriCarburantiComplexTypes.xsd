@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2007 (http://www.altova.com) by vcipriani (EMBRACE) -->
+<xs:schema xmlns="http://dichiarazioni.distributoricarburanti.dogane.finanze.it" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://dichiarazioni.distributoricarburanti.dogane.finanze.it" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:annotation>
+		<xs:documentation>Tipi Complessi</xs:documentation>
+	</xs:annotation>
+	<xs:include schemaLocation="DistributoriCarburantiSimpleTypes.xsd"/>
+	<xs:complexType name="codiceIvaTypeObb">
+		<xs:sequence>
+			<xs:element name="IdPaese">
+				<xs:annotation>
+					<xs:documentation>valore fisso "IT".</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:enumeration value="IT"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="IdCodice">
+				<xs:annotation>
+					<xs:documentation>partita iva/codice fiscale.</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:normalizedString">
+						<xs:pattern value="\d{11}"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="motivazioneTypeObb">
+		<xs:sequence>
+			<xs:element name="CodiceMotivazione">
+				<xs:annotation>
+					<xs:documentation>codice motivazione.</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:positiveInteger">
+						<xs:enumeration value="1"/>
+						<xs:enumeration value="2"/>
+						<xs:enumeration value="3"/>
+						<xs:enumeration value="4"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+			<xs:element name="DescrizioneMotivazione" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>descrizione motivazione Altro.</xs:documentation>
+				</xs:annotation>
+				<xs:simpleType>
+					<xs:restriction base="xs:string">
+						<xs:maxLength value="100"/>
+						<xs:minLength value="0"/>
+						<xs:pattern value="[A-Za-z0-9àèéìòù .,;:+_*\-()='%\\/]{0,100}"/>
+					</xs:restriction>
+				</xs:simpleType>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="logType">
+		<xs:sequence>
+			<xs:element name="codice" type="xs:string"/>
+			<xs:element name="descrizione" type="xs:string"/>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="CorrispettiviGiornalieriType">
+		<xs:sequence>
+			<xs:element name="Imponibile" type="decimal12-2TypeObb">
+				<xs:annotation>
+					<xs:documentation>Corrispettivi complessivi giornalieri al netto dell’IVA. Se nella giornata di riferimento non sono state effettuate movimentazioni di merce (scarichi) indicare 0.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Imposta" type="decimal12-2TypeObb">
+				<xs:annotation>
+					<xs:documentation>Imposta IVA. Se nella giornata di riferimento non sono state effettuate movimentazioni di merce (scarichi) indicare 0.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ImponibileGPLeGAS" type="decimal12-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Corrispettivi complessivi giornalieri al netto dell’IVA per GPL e GAS. Se nella giornata di riferimento non sono state effettuate movimentazioni di merce (scarichi) indicare 0.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="ImpostaGPLeGAS" type="decimal12-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Imposta IVA per GPL e GAS. Se nella giornata di riferimento non sono state effettuate movimentazioni di merce (scarichi) indicare 0.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="CombinazioneType">
+		<xs:sequence>
+			<xs:element name="IdGiacenza" type="idGiacenzaTypeObb">
+				<xs:annotation>
+					<xs:documentation>Identifica il cassetto informatico d'impianto per ciascun tipo di prodotto. Identifica la sezione del registro telematico riferita al tipo di prodotto. Il cassetto informatico contiene, altresì, l'insieme delle telemisure dei valori dei totalizzatori e degli scontrini relativi al tipo di prodotto.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="QuantitaGiacenza" type="decimal11-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Quantità complessivamente giacente in impianto del tipo carburante/olio lubrificante identificato dal campo IdGiacenza, riferita alle ore 23:59:59 della data indicata nel campo 3.1 DataRiferimento, espressa nell'unità di misura prevista per il tipo carburante/olio lubrificante cui si riferisce.Il primo invio del dato, obbligatorio per ciascun tipo carburante/olio lubrificante identificato dal campo IdGiacenza, costituisce il valore di inizializzazione della relativa sezione del registro.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Telelivelli" type="TelelivelliType" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Valori dei telelivelli e delle quantità di carburante in giacenza nei serbatoi riferiti al tipo carburante identificato in IdGiacenza sulla base dei relativi sviluppi dei serbatoi. La comunicazione non è prevista per gli oli lubrificanti.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Carico" type="CaricoType" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Dati elementari del carico di prodotto. I dati indicati in questa sezione del tracciato sono riferiti a tutte le operazioni effettuate dalle 00:00:00 alle 23.59:59 della data indicata nel campo DataRiferimento per il tipo carburante/olio lubrificante indicato nel campo IdGiacenza.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="CaricoPredeterminato" type="CaricoPredType" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Dati descrittivi del carico predeterminato e dello scontrino emesso dal misuratore dell'autobotte. La comunicazione non è prevista per gli oli lubrificanti.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Scarico" type="ScaricoType" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Dati elementari dello scarico di prodotto. I dati indicati in questa sezione sono riferiti a tutte le operazioni effettuate dalle 00:00:00 alle 23.59:59 della data indicata in DataRiferimento e per il tipo carburante/olio lubrificante indicato in IdGiacenza.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TotalizzatoriColonnine" type="TotalizzatoriType" minOccurs="0" maxOccurs="unbounded">
+				<xs:annotation>
+					<xs:documentation>Valori dei totalizzatori di ciascuna colonnina di erogazione. Il dato deve essere inviato per ogni totalizzatore dell'impianto. La comunicazione non è prevista per gli oli lubrificanti.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TelelivelliType">
+		<xs:sequence>
+			<xs:element name="IdRigaTelelivello" type="idRigaType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Numero d’ordine progressivo della registrazione nel sistema dell’operatore.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="IdSerbatoio" type="idTypeObb">
+				<xs:annotation>
+					<xs:documentation>Identificativo serbatoio. Deve risultare associato, nel registro dell'impianto, al tipo carburante di cui al campo IdGiacenza.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Time" type="timeTypeObb">
+				<xs:annotation>
+					<xs:documentation>Ora della misurazione alla data indicata in DataRiferimento.Per gli impianti dotati di telemisure assume la precisione seguente: HH:MM:SS</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="LivelloCarburante" type="decimal5-2TypeObb">
+				<xs:annotation>
+					<xs:documentation>Altezza del livello del carburante in mm.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="VolumeCarburante" type="decimal11-2TypeObb">
+				<xs:annotation>
+					<xs:documentation>Volume del carburante in litri.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Temperatura" type="decimal3-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Temperatura media del carburante (in °C).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="VolumeCarburante15" type="decimal11-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Volume del carburante a 15 °C in litri</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="LivelloAcqua" type="decimal5-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Altezza del livello di acqua in mm.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="VolumeAcqua" type="decimal11-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Volume di acqua in litri.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Densita" type="decimal3-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Densità del carburante in chilogrammi per metro cubo.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Densita15" type="decimal3-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Densità del carburante a 15 °C in chilogrammi per metro cubo.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="CaricoType">
+		<xs:sequence>
+			<xs:element name="IdRigaCarico" type="idRigaTypeObb">
+				<xs:annotation>
+					<xs:documentation>Numero d’ordine progressivo della registrazione nel sistema dell’operatore.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TipoCarico" type="tipoCaricoTypeObb">
+				<xs:annotation>
+					<xs:documentation>Tipologia di Carico. Valori previsti: 1= eccedenza determinata a fine verifica; 2= carico di prodotto in serbatoio/acquisto (per oli lubrificanti); 3= eccedenza riscontrata dall'esercente; 4= reintroduzione di prodotto a seguito di prova delle pistole(valore non ammesso per oli lubrificanti); 5= eccedenza riscontrata ad inizio nuova gestione; 9= Altro (specificare la tipologia nel campo NoteC; ove previsto, indicare anche gli estremi del documento  a corredo dell'operazione).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="IdSerbatoioC" type="idType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Identificativo serbatoio. Deve risultare associato, nel registro dell'impianto, al tipo carburante di cui al campo IdGiacenza.Obbligatorio per TipoCarico=2 e tipo carburante benzina, gasolio e gpl. Per oli lubrificanti è obbligatoriamente assente.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TimeInizio" type="timeType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Ora di inizio del carico alla data indicata nel campo DataRiferimento. Per gli impianti dotati di telemisure e TipoCarico= 2 assume la precisione seguente: HH:MM:SS. Per gpl e oli lubrificanti è obbligatoriamente assente.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TimeFine" type="timeType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Ora di fine del carico alla data indicata nel campo DataRiferimento. Per gli impianti dotati di telemisure e TipoCarico= 2 assume la precisione seguente: HH:MM:SS. Per gpl e oli lubrificanti è obbligatoriamente assente.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DocumentoCarico" type="DocumentoType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Dati del documento di carico a scorta della merce.Obbligatorio per TipoCarico= 2</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="QtaCaricata" type="decimal11-2TypeObb">
+				<xs:annotation>
+					<xs:documentation>Quantità di prodotto caricato. A seconda del Tipo carico indicato, il campo è destinato a contenere uno dei seguenti valori: Eccedenza determinata a seguito di verifica dell’Amministrazione finanziaria (TipoCarico='1'); Quantità di prodotto consegnato in litri/acquistato in chilogrammi per oli lubrificanti (TipoCarico='2'); Eccedenza rilevata (TipoCarico='3'); Quantità effettiva reintrodotta nel serbatoio (TipoCarico='4'). L'unità di misura in cui è espressa la quantità indicata è quella associata all'IdGiacenza cui si riferisce.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TemperaturaC" type="decimal3-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Temperatura del prodotto caricato in °C. Per gpl e oli lubrificanti è obbligatoriamente assente</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="QtaPrd15C" type="decimal11-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Quantità di prodotto caricato a 15 °C in litri. Per gpl e oli lubrificanti è obbligatoriamente assente.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DensitaC" type="decimal3-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Densità del carburante caricato in chilogrammi per metro cubo. Per gpl e oli lubrificanti è obbligatoriamente assente.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Densita15C" type="decimal3-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Densità del carburante caricato a 15 °C in chilogrammi per metro cubo. Per gpl e oli lubrificanti è obbligatoriamente assente.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="NoteC" type="notaType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Motivazione della scritturazione di carico.Obbligatorio per TipoCarico diverso da "2"</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="DocumentoType">
+		<xs:sequence>
+			<xs:element name="CodiceDittaSpeditore" type="codiceDittaSpeditoreType">
+				<xs:annotation>
+					<xs:documentation>Codice accisa o codice ditta indicato nel documento di carico, nel formato IT00…</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TipoDocCarico" type="tipoDocTypeObb">
+				<xs:annotation>
+					<xs:documentation>Tipo documento giustificativo dell’operazione.Valori previsti:  "DAS";  "RDR" (DAS Elettronico, non previsto per oli lubrificanti)</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="IdDocCarico" type="docTypeObb">
+				<xs:annotation>
+					<xs:documentation>Identificativo progressivo del DAS o del documento giustificativo dell’operazione.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SeqNumberCarico" type="seqNumberType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Numero progressivo assegnato al DAS telematico.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="BodyRecordURCarico" type="bodyType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Progressivo dettaglio del DAS telematico univoco.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DataDocCarico" type="dataTimeTypeObb">
+				<xs:annotation>
+					<xs:documentation>Data del documento, per il DAS telematico indicare la data di validazione del messaggio "DRAFT DAS TELEMATICO".</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Prodotto" type="tipoCarburanteTypeObb">
+				<xs:annotation>
+					<xs:documentation>Codice identificativo del prodotto caricato, nel  formato CPA-NC-TARIC-CADD. Deve risultare associato, nel registro dell'impianto, al tipo carburante di cui al campo IdGiacenza.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="CaricoPredType">
+		<xs:sequence>
+			<xs:element name="IdRigaCarPred" type="idRigaTypeObb">
+				<xs:annotation>
+					<xs:documentation>Numero d’ordine progressivo della registrazione nel sistema dell’operatore.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TipoTargaAutobotte" type="xs:boolean">
+				<xs:annotation>
+					<xs:documentation>Tipologia di targa dell'autobotte che ha effettuato il carico. Valori previsti: "true"= Nazionale; "false"= non Nazionale.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TargaAutobotte" type="targaTypeObb">
+				<xs:annotation>
+					<xs:documentation>Targa autobotte che ha effettuato il carico.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="MatricolaContatore" type="idType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Matricola del contatore dell'autobotte.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="NumeroScontrino" type="idTypeObb">
+				<xs:annotation>
+					<xs:documentation>Identificativo dello scontrino.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DataScontrino" type="dataTypeObb">
+				<xs:annotation>
+					<xs:documentation>Data dello scontrino.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="OraScontrino" type="timeTypeObb">
+				<xs:annotation>
+					<xs:documentation>Ora dello scontrino.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="LetturaIniziale" type="decimal11-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Lettura del contatore dell'autobotte all'inizio dello scarico.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="LetturaFinale" type="decimal11-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Lettura del contatore dell'autobotte alla fine dello scarico.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="QuantitaScaricata" type="decimal11-2TypeObb">
+				<xs:annotation>
+					<xs:documentation>Quantità misurata dal contatore dell'autobotte e riportata sullo scontrino. La quantità indicata equivale alla differenza tra la  LetturaFinale e la  LetturaIniziale del contatore.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TipoDoc" type="tipoDocTypeObb">
+				<xs:annotation>
+					<xs:documentation>Tipo documento che ha scortato il prodotto sull'impianto. Il contenuto del campo deve corrispondere a quanto comunicato nel campo TipoDocCarico della movimentazione di carico corrispondente, riferita a data non successiva alla trasmissione dei dati dello scontrino.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Doc" type="docTypeObb">
+				<xs:annotation>
+					<xs:documentation>Identificativo progressivo del DAS a scorta della movimentazione.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="SeqNumber" type="seqNumberType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Numero progressivo del DAS telematico a scorta della movimentazione.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="BodyRecordUR" type="bodyType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Progressivo dettaglio del DAS telematico univoco.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="QtaPrdLt" type="decimal11-2TypeObb">
+				<xs:annotation>
+					<xs:documentation>Quantità di prodotto indicata nel DAS a scorta della movimentazione.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TipoDifferenza" type="tipoDifferenzaTypeObb">
+				<xs:annotation>
+					<xs:documentation>Tipologia di differenza riscontrata tra il quantitativo caricato ed il quantitativo indicato nel DAS.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="QtaDifferenza" type="decimal11-2TypeObb">
+				<xs:annotation>
+					<xs:documentation>Quantità della differenza riscontrata in litri,  tra la quantità di prodotto scaricata e la  quantità indicata nel DAS.  </xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="ScaricoType">
+		<xs:sequence>
+			<xs:element name="IdRigaScarico" type="idRigaTypeObb">
+				<xs:annotation>
+					<xs:documentation>Numero d’ordine progressivo della registrazione nel sistema dell’operatore.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TipoScarico" type="tipoScaricoTypeObb">
+				<xs:annotation>
+					<xs:documentation>Tipologia di Scarico. Valori previsti:  1= erogazione/vendita; 2= miscela accidentale (ndicare nel campo NoteS gli estremi del documento di scarico; valore non ammesso per oli lubrificanti); 3= furto; 4= deficienza constatata dall'esercente; 5= deficienza determinata a fine verifica; 6= prova delle pistole con emissione di prodotto o senza emissione di prodotto (per scatti a vuoto, indicare QtaScaricataOScatti =’0’; valore non ammesso per oli lubrificanti); 7= deficienza riscontrata ad inizio nuova gestione; 9= Altro (specificare la tipologia nel campo NoteS; ove previsto, indicare anche gli estremi del documento di scarico).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="QtaScaricataOScatti" type="qtaLetturaTypeObb">
+				<xs:annotation>
+					<xs:documentation>Quantità di prodotto scaricato in volume ambiente per il tipo carburante (o in chilogrammi per l'olio lubrificante) di cui al campo IdGiacenza e per il Tipo Scarico indicato (ad ecslusione del TipoScarico=6). Per TipoScarico=6 indicare il numero degli scatti effettuati dal contatore del totalizzatore durante gli scatti a vuoto.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TemperaturaS" type="decimal3-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Temperatura del prodotto scaricato in °C. Per gpl e oli lubrificanti è obbligatoriamente assente.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="QtaPrd15S" type="decimal11-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Quantità di prodotto scaricato a 15 °C in litri. Per gpl e oli lubrificanti è obbligatoriamente assente.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="DensitaS" type="decimal3-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Densità del carburante scaricato in chilogrammi per metro cubo. Per gpl e oli lubrificanti è obbligatoriamente assente.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="Densita15S" type="decimal3-2Type" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Densità del carburante scaricato a 15 °C in chilogrammi per metro cubo. Per gpl e oli lubrificanti è obbligatoriamente assente.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="NoteS" type="notaType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Motivazione della scritturazione di scarico. Obbligatorio per TipoScarico diverso da "1".</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+	<xs:complexType name="TotalizzatoriType">
+		<xs:sequence>
+			<xs:element name="IdRigaTotaliz" type="idRigaType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Numero d’ordine progressivo della registrazione nel sistema dell’operatore.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="IdTotalizzatore" type="idTypeObb">
+				<xs:annotation>
+					<xs:documentation>Identificativo del totalizzatore dell'impianto. Deve risultare associato, nel registro dell'impianto, al tipo carburante di cui al campo IdGiacenza.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="TipoLettura" type="tipoLetturaTypeObb">
+				<xs:annotation>
+					<xs:documentation>Tipo di lettura. Valori previsti: 1= lettura iniziale; 2= lettura a fine giornata; 3= lettura a fine anno; 4= lettura per cambio gestione; 5= lettura iniziale "scatti a vuoto"; 6= lettura finale "scatti a vuoto"; 7= lettura finale totalizzatore sostituito (ultima lettura del totalizzatore sostituito con altro avente lo stesso identificativo); 8= lettura di inizio nuova gestione (prima lettura del totalizzatore ad inizio nuova gestione da comunicare, da parte dell'esercente subentrante, qualora difforme dalla lettura per cambio gestione comunicata dal cedente).</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="LetturaTotalizzatore" type="qtaLetturaTypeObb">
+				<xs:annotation>
+					<xs:documentation>Lettura del totalizzatore in litri.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+			<xs:element name="NoteT" type="notaType" minOccurs="0">
+				<xs:annotation>
+					<xs:documentation>Da valorizzare in caso di interventi di manutenzione che modifichino la progressività del totalizzatore.</xs:documentation>
+				</xs:annotation>
+			</xs:element>
+		</xs:sequence>
+	</xs:complexType>
+</xs:schema>

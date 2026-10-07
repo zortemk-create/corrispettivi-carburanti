@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:annotation>
+		<xs:documentation>Tipi base</xs:documentation>
+	</xs:annotation>
+	<xs:simpleType name="tipoTypeObb">
+		<xs:annotation>
+			<xs:documentation>tipo documento</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString">
+			<xs:pattern value="DAS"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="numeroTypeObb">
+		<xs:annotation>
+			<xs:documentation>numero del documento</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="21"/>
+			<xs:pattern value="[A-Za-z0-9àèéìòù .,;:+_*\-()='%\\/]{1,21}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="dataTypeObb">
+		<xs:restriction base="xs:date"/>
+	</xs:simpleType>
+	<xs:simpleType name="dataTimeTypeObb">
+		<xs:restriction base="xs:dateTime"/>
+	</xs:simpleType>
+	<xs:simpleType name="dataTimeType">
+		<xs:union memberTypes="xs:dateTime">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="dataType">
+		<xs:union memberTypes="xs:date">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="codiceAccisaTypeObb">
+		<xs:annotation>
+			<xs:documentation>codice accisa</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:minLength value="13"/>
+			<xs:maxLength value="13"/>
+			<xs:pattern value="(IT00[A-Z]{3}[0-9]{5}[A-Z])"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="codiceDittaSpeditoreType">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="13"/>
+			<xs:maxLength value="13"/>
+			<xs:pattern value="(IT00[A-Z]{3}[0-9]{5}[A-Z])"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="decimal11-3Type">
+		<xs:union>
+			<xs:simpleType>
+				<xs:restriction base="xs:decimal">
+					<xs:pattern value="(\d{1,11})(\.)(\d{3})"/>
+				</xs:restriction>
+			</xs:simpleType>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="decimal11-3TypeObb">
+		<xs:restriction base="xs:decimal">
+			<xs:pattern value="(\d{1,11})(\.)(\d{3})"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="decimal12-2TypeObb">
+		<xs:restriction base="xs:decimal">
+			<xs:pattern value="(\d{1,12})(\.)(\d{2})"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="decimal12-2Type">
+		<xs:union>
+			<xs:simpleType>
+				<xs:restriction base="xs:decimal">
+					<xs:pattern value="(\d{1,12})(\.)(\d{2})"/>
+				</xs:restriction>
+			</xs:simpleType>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="decimal11-2Type">
+		<xs:union>
+			<xs:simpleType>
+				<xs:restriction base="xs:decimal">
+					<xs:pattern value="(\d{1,11})(\.)(\d{2})"/>
+				</xs:restriction>
+			</xs:simpleType>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="decimal11-2TypeObb">
+		<xs:restriction base="xs:decimal">
+			<xs:pattern value="(\d{1,11})(\.)(\d{2})"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="decimal5-2Type">
+		<xs:union>
+			<xs:simpleType>
+				<xs:restriction base="xs:decimal">
+					<xs:pattern value="(\d{1,5})(\.)(\d{2})"/>
+				</xs:restriction>
+			</xs:simpleType>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="decimal5-2TypeObb">
+		<xs:restriction base="xs:decimal">
+			<xs:pattern value="(\d{1,5})(\.)(\d{2})"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="decimal3-2Type">
+		<xs:union>
+			<xs:simpleType>
+				<xs:restriction base="xs:decimal">
+					<xs:pattern value="(\d{1,3})(\.)(\d{2})"/>
+				</xs:restriction>
+			</xs:simpleType>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="numeroOrdineType">
+		<xs:annotation>
+			<xs:documentation>progressivo riga del registro dell'operatore</xs:documentation>
+		</xs:annotation>
+		<xs:union>
+			<xs:simpleType>
+				<xs:restriction base="xs:long">
+					<xs:maxInclusive value="9999999999"/>
+					<xs:minInclusive value="1"/>
+				</xs:restriction>
+			</xs:simpleType>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="tipoCarburanteTypeObb">
+		<xs:annotation>
+			<xs:documentation>codice prodotto= CPA||NC||TARIC||CADD</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:normalizedString">
+			<xs:maxLength value="18"/>
+			<xs:minLength value="8"/>
+			<xs:pattern value="[A-Z0-9]{1,18}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="tipoGiacenzaTypeObb">
+		<xs:annotation>
+			<xs:documentation>Tipologia di Giacenza</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:positiveInteger">
+			<xs:enumeration value="1"/>
+			<xs:enumeration value="2"/>
+			<xs:enumeration value="3"/>
+			<xs:enumeration value="4"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="idGiacenzaTypeObb">
+		<xs:annotation>
+			<xs:documentation>identificativo sezione registro/combinazione di prodotti</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="4"/>
+			<xs:minLength value="4"/>
+			<xs:pattern value="[A-Z][0-9]{3}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="idRigaType">
+		<xs:annotation>
+			<xs:documentation>Numero d’ordine progressivo della registrazione nel sistema dell’operatore</xs:documentation>
+		</xs:annotation>
+		<xs:union>
+			<xs:simpleType>
+				<xs:restriction base="xs:positiveInteger">
+					<xs:maxInclusive value="9999999999"/>
+					<xs:minInclusive value="1"/>
+				</xs:restriction>
+			</xs:simpleType>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="idRigaTypeObb">
+		<xs:annotation>
+			<xs:documentation>Numero d’ordine progressivo della registrazione nel sistema dell’operatore</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:positiveInteger">
+			<xs:maxInclusive value="9999999999"/>
+			<xs:minInclusive value="1"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="idTypeObb">
+		<xs:annotation>
+			<xs:documentation>Identificativo</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="20"/>
+			<xs:minLength value="1"/>
+			<xs:pattern value="[A-Za-z0-9àèéìòù .,;:+_*\-()='%\\/]{1,20}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="idType">
+		<xs:annotation>
+			<xs:documentation>Identificativo serbatoio</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="20"/>
+			<xs:minLength value="0"/>
+			<xs:pattern value="[A-Za-z0-9àèéìòù .,;:+_*\-()='%\\/]{1,20}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="targaTypeObb">
+		<xs:annotation>
+			<xs:documentation>Inserire lettere e numeri senza caratteri/spazi di separazione.</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:maxLength value="10"/>
+			<xs:minLength value="1"/>
+			<xs:pattern value="[A-Z0-9]{1,10}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="timeTypeObb">
+		<xs:annotation>
+			<xs:documentation>Orario</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:time"/>
+	</xs:simpleType>
+	<xs:simpleType name="timeType">
+		<xs:annotation>
+			<xs:documentation>Orario</xs:documentation>
+		</xs:annotation>
+		<xs:union memberTypes="xs:time">
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="tipoCaricoTypeObb">
+		<xs:annotation>
+			<xs:documentation>Tipologia di Carico</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:positiveInteger">
+			<xs:enumeration value="1"/>
+			<xs:enumeration value="2"/>
+			<xs:enumeration value="3"/>
+			<xs:enumeration value="4"/>
+			<xs:enumeration value="5"/>
+			<xs:enumeration value="9"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="tipoDocTypeObb">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="3"/>
+			<xs:maxLength value="3"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="docTypeObb">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="30"/>
+			<xs:pattern value="[A-Za-z0-9àèéìòù .,;:+_*\-()='%\\/]{1,30}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="tipoScaricoTypeObb">
+		<xs:restriction base="xs:positiveInteger">
+			<xs:enumeration value="1"/>
+			<xs:enumeration value="2"/>
+			<xs:enumeration value="3"/>
+			<xs:enumeration value="4"/>
+			<xs:enumeration value="5"/>
+			<xs:enumeration value="6"/>
+			<xs:enumeration value="7"/>
+			<xs:enumeration value="9"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="numErogType">
+		<xs:annotation>
+			<xs:documentation>Numero erogatore</xs:documentation>
+		</xs:annotation>
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="20"/>
+			<xs:pattern value="[A-Za-z0-9àèéìòù .,;:+_*\-()='%\\/]{1,20}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="seqNumberType">
+		<xs:union>
+			<xs:simpleType>
+				<xs:restriction base="xs:positiveInteger">
+					<xs:minInclusive value="1"/>
+					<xs:maxInclusive value="99"/>
+				</xs:restriction>
+			</xs:simpleType>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="bodyType">
+		<xs:union>
+			<xs:simpleType>
+				<xs:restriction base="xs:positiveInteger">
+					<xs:minInclusive value="1"/>
+					<xs:maxInclusive value="999"/>
+				</xs:restriction>
+			</xs:simpleType>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="tipoDifferenzaTypeObb">
+		<xs:restriction base="xs:positiveInteger">
+			<xs:enumeration value="1"/>
+			<xs:enumeration value="2"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="notaType">
+		<xs:restriction base="xs:string">
+			<xs:minLength value="1"/>
+			<xs:maxLength value="500"/>
+			<xs:pattern value="[A-Za-z0-9àèéìòù .,;:+_*\-()='%\\/]{1,500}"/>
+		</xs:restriction>
+	</xs:simpleType>
+	<xs:simpleType name="qtaLetturaTypeObb">
+		<xs:union>
+			<xs:simpleType>
+				<xs:restriction base="xs:decimal">
+					<xs:pattern value="(\d{1,12})(\.)(\d{2})"/>
+				</xs:restriction>
+			</xs:simpleType>
+			<xs:simpleType>
+				<xs:restriction base="xs:string">
+					<xs:length value="0"/>
+				</xs:restriction>
+			</xs:simpleType>
+		</xs:union>
+	</xs:simpleType>
+	<xs:simpleType name="tipoLetturaTypeObb">
+		<xs:restriction base="xs:positiveInteger">
+			<xs:enumeration value="1"/>
+			<xs:enumeration value="2"/>
+			<xs:enumeration value="3"/>
+			<xs:enumeration value="4"/>
+			<xs:enumeration value="5"/>
+			<xs:enumeration value="6"/>
+			<xs:enumeration value="7"/>
+			<xs:enumeration value="8"/>
+		</xs:restriction>
+	</xs:simpleType>
+</xs:schema>

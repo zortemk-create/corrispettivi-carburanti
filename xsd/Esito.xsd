@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- edited with XMLSpy v2007 (http://www.altova.com) by vcipriani (EMBRACE) -->
+<xs:schema xmlns="http://dichiarazioni.distributoricarburanti.dogane.finanze.it" xmlns:xs="http://www.w3.org/2001/XMLSchema" targetNamespace="http://dichiarazioni.distributoricarburanti.dogane.finanze.it" elementFormDefault="qualified" attributeFormDefault="unqualified">
+	<xs:include schemaLocation="DistributoriCarburantiComplexTypes.xsd"/>
+	<xs:element name="Esito">
+		<xs:complexType>
+			<xs:sequence>
+				<xs:element name="dataOraRisposta" type="xs:dateTime">
+					<xs:annotation>
+						<xs:documentation>data e ora della produzione dell'esito</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="errore" type="logType" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>presente se lo stato finale è = 198</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="segnalazione" type="logType" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>presente se lo stato finale è = 200</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="identificativo" type="xs:string" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>presente se lo stato finale è = 200. Ogni elemento contiene l'IDENTIFICATIVO UNIVOCO ANNUALE attribuito dal sistema dell'Agenzia delle Dogane e Monopoli alla comunicazione inviata, associato all'identificativo riga del registro dell'operatore, ove comunicato.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+				<xs:element name="giacenza" type="xs:string" minOccurs="0" maxOccurs="unbounded">
+					<xs:annotation>
+						<xs:documentation>presente se lo stato finale è = 200. Ogni elemento contiene la giacenza di fine giornata CALCOLATA dal sistema dell'Agenzia delle Dogane e Monopoli per ogni DataRiferimentro ed IdGiacenza referenziato nel messaggio.</xs:documentation>
+					</xs:annotation>
+				</xs:element>
+			</xs:sequence>
+		</xs:complexType>
+	</xs:element>
+</xs:schema>
