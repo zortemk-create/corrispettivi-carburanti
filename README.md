@@ -52,6 +52,16 @@ copy .env.example .env   # DB-Zugang eintragen
 python app.py            # http://127.0.0.1:5002
 ```
 
+### Autostart
+
+`autostart_einrichten.ps1` (als Administrator) legt zwei Windows-Aufgaben an:
+
+- **CorrispettiviBackend** – startet das Dashboard beim Systemstart (Konto SYSTEM, Log in `backend.log`)
+- **CorrispettiviWatchdog** – prüft alle 5 Minuten, ob das Dashboard antwortet, und startet es sonst neu
+  (Log in `watchdog.log`)
+
+Neustart von Hand: `Stop-ScheduledTask CorrispettiviBackend; Start-ScheduledTask CorrispettiviBackend`
+
 Beim Start wird das Schema `corrispettivi` in der Tagesabrechnung-Datenbank angelegt.
 Die Tabellen der Tagesabrechnung werden nur gelesen.
 
