@@ -108,3 +108,12 @@ select { font: inherit; color: var(--text); background: var(--card); border: 1px
   main { padding: 0; }
   tr.korrigiert td, tr.abweichung td { background: none; }
 }
+
+input.lordo { width: 120px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; padding: 4px 8px; }
+input.lordo.ungueltig { border-color: var(--bad); background: var(--bad-bg); }
+tr.geaendert td { background: var(--edit-bg); }
+tr.geaendert td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+td.vorschau { color: var(--muted); font-style: italic; cursor: default; }
+.lordo-leiste { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  padding: 10px 0; margin-bottom: 8px; background: var(--card); border-bottom: 1px solid var(--line); }
+.lordo-leiste input { flex: 1 1 220px; min-width: 160px; }

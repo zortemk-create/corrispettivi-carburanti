@@ -71,12 +71,17 @@
   </section>
 
   <section class="card">
+    <div id="lordo-leiste" class="lordo-leiste hidden">
+      <strong id="lordo-anzahl"></strong>
+      <input id="lordo-notiz" placeholder="Notiz / Grund (optional)">
+      <button id="lordo-verwerfen" class="ghost">Verwerfen</button>
+      <button id="lordo-speichern" class="primary">Änderungen speichern</button>
+    </div>
     <div class="tablewrap">
       <table id="tabelle">
         <thead>
           <tr>
-            <th>Datum</th><th class="num">Tagesabrechnung</th>
-            <th class="num">Corrispettivo lordo</th><th class="num">Imponibile ⧉</th><th class="num">Imposta ⧉</th>
+            <th>Datum</th><th class="num">Corrispettivo lordo</th><th class="num">Imponibile ⧉</th><th class="num">Imposta ⧉</th>
             <th>Quelle</th><th></th>
           </tr>
         </thead>
@@ -108,20 +113,6 @@
     <div id="protokoll"></div>
   </details>
 </main>
-
-<dialog id="dlg-tag">
-  <form method="dialog">
-    <h3 id="tag-titel">Tag korrigieren</h3>
-    <p class="muted" id="tag-quelle"></p>
-    <label>Corrispettivo lordo (€)<input id="tag-brutto" inputmode="decimal" required></label>
-    <label>Notiz / Grund<input id="tag-notiz" placeholder="z.B. Zählerstand nachkorrigiert"></label>
-    <div class="dlg-actions">
-      <button value="cancel" class="ghost">Abbrechen</button>
-      <button id="tag-reset" type="button" class="ghost danger">Auf Tagesabrechnung zurücksetzen</button>
-      <button id="tag-save" value="save" class="primary">Speichern</button>
-    </div>
-  </form>
-</dialog>
 
 <dialog id="dlg-einst">
   <form method="dialog">

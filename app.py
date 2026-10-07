@@ -168,6 +168,7 @@ def monat_lesen(cur, monat):
         'status': monat_status(cur, m),
         'meldung': meldung_zu(cur, m),
         'frist': cr.frist(m),
+        'iva_satz': einst['iva_satz'],
         'einstellungen_fehler': cr.pruefe_einstellungen(einst),
         'tage': tage,
         'summe': summen(tage),
@@ -196,45 +197,77 @@ def summen(tage):
     return {k: sum((t[k] for t in gemeldet), Decimal('0')) for k in ('brutto', 'imponibile', 'imposta')}
 
 
-@app.put('/api/tag/<datum>')
+MAX_BRUTTO = Decimal('9999999.99')
+
+
+@app.put('/api/monat/<monat>/lordo')
 @db_tx
-def tag_korrigieren(cur, datum):
+def lordo_speichern(cur, monat):
+    """Speichert geaenderte Lordo-Werte mehrerer Tage in corrispettivi.korrekturen (alles oder nichts).
+    brutto leer/null = Tag nicht melden bzw. Wert der Tagesabrechnung verwenden. Ein Wert, der dem der
+    Tagesabrechnung entspricht, wird nicht als Korrektur gespeichert."""
     body = request.get_json(force=True)
     benutzer = benutzer_aus(body)
-    tag = cr.dt.date.fromisoformat(datum)
-    pruefe_offen(cur, tag.replace(day=1))
-    try:
-        brutto = cr.d2(str(body.get('brutto', '')).replace(',', '.'))
-    except InvalidOperation:
-        raise Fehler('Betrag ist keine Zahl.')
-    if brutto < 0:
-        raise Fehler('Betrag darf nicht negativ sein.')
+    m = cr.parse_monat(monat)
+    pruefe_offen(cur, m)
     notiz = (body.get('notiz') or '').strip()
-    cur.execute('SELECT brutto FROM corrispettivi.korrekturen WHERE tag_date = %s', (tag,))
-    alt = cur.fetchone()
-    cur.execute(
-        '''INSERT INTO corrispettivi.korrekturen (tag_date, brutto, notiz, geaendert_von)
-           VALUES (%s, %s, %s, %s)
-           ON CONFLICT (tag_date) DO UPDATE SET brutto = EXCLUDED.brutto, notiz = EXCLUDED.notiz,
-                geaendert_von = EXCLUDED.geaendert_von, geaendert_am = now()''',
-        (tag, brutto, notiz, benutzer),
-    )
-    protokolliere(cur, benutzer, 'korrektur', tag.replace(day=1), tag=tag,
-                  alt=alt['brutto'] if alt else None, neu=brutto, notiz=notiz)
-    return antwort({'ok': True})
+    aenderungen = body.get('aenderungen') or []
+    if not aenderungen:
+        raise Fehler('Keine Änderungen übergeben.')
+    first, last = cr.month_bounds(m)
 
+    fehler, neu = [], {}
+    for a in aenderungen:
+        try:
+            tag = cr.dt.date.fromisoformat(str(a.get('datum')))
+        except ValueError:
+            fehler.append(f'Ungültiges Datum: {a.get("datum")}')
+            continue
+        if not first <= tag <= last:
+            fehler.append(f'{tag:%d.%m.%Y} liegt nicht im Monat {m:%m/%Y}.')
+            continue
+        roh = a.get('brutto')
+        if roh is None or str(roh).strip() == '':
+            neu[tag] = None
+            continue
+        try:
+            wert = cr.d2(str(roh).replace(',', '.'))
+        except InvalidOperation:
+            fehler.append(f'{tag:%d.%m.%Y}: „{roh}“ ist keine Zahl.')
+            continue
+        if wert < 0 or wert > MAX_BRUTTO:
+            fehler.append(f'{tag:%d.%m.%Y}: Betrag außerhalb des erlaubten Bereichs.')
+            continue
+        neu[tag] = wert
+    if fehler:
+        raise Fehler('Nichts gespeichert – bitte Eingaben prüfen.', details=fehler)
 
-@app.delete('/api/tag/<datum>')
-@db_tx
-def tag_zuruecksetzen(cur, datum):
-    benutzer = benutzer_aus(request.get_json(force=True))
-    tag = cr.dt.date.fromisoformat(datum)
-    pruefe_offen(cur, tag.replace(day=1))
-    cur.execute('DELETE FROM corrispettivi.korrekturen WHERE tag_date = %s RETURNING brutto', (tag,))
-    alt = cur.fetchone()
-    if alt:
-        protokolliere(cur, benutzer, 'korrektur_entfernt', tag.replace(day=1), tag=tag, alt=alt['brutto'])
-    return antwort({'ok': True})
+    quelle = cr.quell_werte(cur, first, last)
+    cur.execute('SELECT tag_date, brutto FROM corrispettivi.korrekturen WHERE tag_date BETWEEN %s AND %s', (first, last))
+    korr = {r['tag_date']: r['brutto'] for r in cur.fetchall()}
+
+    gespeichert = 0
+    for tag, wert in sorted(neu.items()):
+        q = quelle[tag]['brutto'] if tag in quelle else None
+        alt = korr[tag] if tag in korr else q
+        if wert is None or wert == q:
+            if tag in korr:
+                cur.execute('DELETE FROM corrispettivi.korrekturen WHERE tag_date = %s', (tag,))
+                protokolliere(cur, benutzer, 'korrektur_entfernt', m, tag=tag, alt=korr[tag], neu=q)
+                gespeichert += 1
+            continue
+        if tag in korr and korr[tag] == wert:
+            continue
+        cur.execute(
+            '''INSERT INTO corrispettivi.korrekturen (tag_date, brutto, notiz, geaendert_von)
+               VALUES (%s, %s, %s, %s)
+               ON CONFLICT (tag_date) DO UPDATE SET brutto = EXCLUDED.brutto, notiz = EXCLUDED.notiz,
+                    geaendert_von = EXCLUDED.geaendert_von, geaendert_am = now()''',
+            (tag, wert, notiz, benutzer),
+        )
+        protokolliere(cur, benutzer, 'korrektur', m, tag=tag, alt=alt, neu=wert, notiz=notiz)
+        gespeichert += 1
+    return antwort({'ok': True, 'gespeichert': gespeichert})
 
 
 # ---------- XML erzeugen / Uebermittlung bestaetigen ----------

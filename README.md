@@ -11,8 +11,10 @@ Die Werte werden automatisch aus der Datenbank der **Tagesabrechnung** gelesen
 
 1. Dashboard öffnen – es zeigt standardmäßig den Vormonat und die Frist.
 2. Werte prüfen. Sie kommen 1:1 aus der Tagesabrechnung. Tage ohne Eintrag werden nicht gemeldet
-   (grau, im Portal leer lassen). Einzelne Werte lassen sich bei Bedarf über **Ändern** überschreiben
-   (mit Notiz; wird protokolliert, jederzeit zurücksetzbar).
+   (grau, im Portal leer lassen). Die Spalte **Corrispettivo lordo** ist direkt in der Tabelle bearbeitbar
+   (Imponibile/Imposta erscheinen als Vorschau); **Änderungen speichern** legt sie mit Notiz in der eigenen
+   Tabelle `corrispettivi.korrekturen` ab – die Tagesabrechnung bleibt unverändert. Mit ↺ springt ein Tag auf den
+   Wert der Tagesabrechnung zurück; auch für Tage ohne Eintrag lässt sich ein Betrag eintragen.
 3. Im **Portale Unico Dogane e Monopoli** (SPID/CNS) → *Servizi online* →
    *Corrispettivi Distributori Carburanti* → *Acquisizione corrispettivi* Monat/Jahr wählen und je Tag
    **Imponibile** und **Imposta** eintragen (ausgelassene Tage leer lassen). Klick auf einen Betrag im Dashboard kopiert ihn

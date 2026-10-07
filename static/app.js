@@ -5,7 +5,7 @@ const eur = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' 
 const zahl = new Intl.NumberFormat('de-DE', { maximumFractionDigits: 0 });
 const WT = ['So', 'Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa'];
 
-const state = { monat: null, daten: null, tagEdit: null };
+const state = { monat: null, daten: null };
 
 const STATUS_TEXT = {
   gemeldet: 'Gemeldet', offen: 'Offen', ueberfaellig: 'Überfällig', laufend: 'Läuft noch',
@@ -162,23 +162,25 @@ function render() {
     if (t.korrektur) quelle = `<span class="tag manuell" title="${esc(t.korrektur.notiz)} – ${esc(t.korrektur.von)}, ${fmtZeit(t.korrektur.am)}">manuell · ${esc(t.korrektur.von)}</span>`;
     else if (!t.melden) quelle = '<span class="tag">kein Eintrag · wird nicht gemeldet</span>';
     if (t.abweichung) quelle += ` <span class="tag abweichung" title="Gemeldet: ${esc(t.gemeldet ? t.gemeldet.imponibile + ' / ' + t.gemeldet.imposta : '–')}">geändert seit Meldung</span>`;
-    return `<tr class="${cls}">
+    const wert = t.brutto == null ? '' : num(t.brutto).toFixed(2).replace('.', ',');
+    const aus = t.brutto_quelle == null ? '' : num(t.brutto_quelle).toFixed(2).replace('.', ',');
+    const lordo = gesperrt
+      ? `<strong>${t.melden ? fmtEur(t.brutto) : '–'}</strong>`
+      : `<input class="lordo" inputmode="decimal" autocomplete="off" placeholder="–" aria-label="Lordo ${t.datum}"
+           data-orig="${wert}" data-quelle="${aus}" value="${wert}">`;
+    const reset = gesperrt ? '' : `<button type="button" class="reset hidden" data-reset
+           title="${aus ? 'Auf Wert der Tagesabrechnung zurücksetzen: ' + aus + ' €' : 'Eingabe entfernen (Tag nicht melden)'}">↺</button>`;
+    return `<tr class="${cls}" data-datum="${t.datum}" data-imp="${t.imponibile ?? ''}" data-iva="${t.imposta ?? ''}">
       <td>${WT[wt]} ${datum.toLocaleDateString('de-DE')}</td>
-      <td class="num">${fmtEur(t.brutto_quelle)}</td>
-      <td class="num"><strong>${fmtEur(t.brutto)}</strong></td>
-      ${t.melden ? `<td class="num kopie" data-kopie="${t.imponibile}" title="Klicken zum Kopieren">${fmtEur(t.imponibile)}</td>
-      <td class="num kopie" data-kopie="${t.imposta}" title="Klicken zum Kopieren">${fmtEur(t.imposta)}</td>` : '<td class="num">–</td><td class="num">–</td>'}
-      <td>${quelle}</td>
-      <td>${gesperrt ? '' : `<button data-tag="${t.datum}">Ändern</button>`}</td>
+      <td class="num">${lordo}</td>
+      <td class="num imp"></td><td class="num iva"></td>
+      <td class="quelle">${quelle}</td>
+      <td>${reset}</td>
     </tr>`;
   });
   $('#tabelle tbody').innerHTML = rows.join('');
-  $('#tabelle tbody').onclick = (e) => {
-    const b = e.target.closest('button[data-tag]');
-    if (b) return oeffneTag(b.dataset.tag);
-    const k = e.target.closest('td[data-kopie]');
-    if (k) kopiere(k.dataset.kopie);
-  };
+  document.querySelectorAll('#tabelle tbody tr').forEach(aktualisiereZeile);
+  aktualisiereLeiste();
 
   $('#btn-xml').disabled = gesperrt;
   $('#btn-bestaetigen').disabled = gesperrt;
@@ -314,38 +316,97 @@ function beschreibe(p) {
 
 // ---------- Dialoge ----------
 
-function oeffneTag(datum) {
-  const t = state.daten.tage.find((x) => x.datum === datum);
-  state.tagEdit = t;
-  $('#tag-titel').textContent = `Tag ${new Date(datum + 'T00:00:00').toLocaleDateString('de-DE')} korrigieren`;
-  $('#tag-quelle').textContent = t.brutto_quelle == null
-    ? 'Kein Eintrag in der Tagesabrechnung.'
-    : `Tagesabrechnung: ${fmtEur(t.brutto_quelle)} (${zahl.format(num(t.liter))} Liter)`;
-  $('#tag-brutto').value = t.brutto == null ? '' : num(t.brutto).toFixed(2).replace('.', ',');
-  $('#tag-notiz').value = t.korrektur?.notiz || '';
-  $('#tag-reset').classList.toggle('hidden', !t.korrektur);
-  $('#dlg-tag').showModal();
+// ---------- Lordo bearbeiten ----------
+
+// Eingabe -> { leer } | { wert: '1234.56' } | { fehler }
+function parseBetrag(text) {
+  let t = String(text ?? '').replace(/[€\s]/g, '');
+  if (t === '') return { leer: true };
+  if (t.includes(',')) t = t.replace(/\./g, '').replace(',', '.');
+  if (!/^\d+(\.\d{1,2})?$/.test(t)) return { fehler: true };
+  const n = Number(t);
+  if (!(n >= 0 && n <= 9999999.99)) return { fehler: true };
+  return { wert: n.toFixed(2) };
 }
 
-async function speichereTag(e) {
-  e.preventDefault();
+function gleicherWert(a, b) {
+  return (a.leer && b.leer) || (a.wert !== undefined && a.wert === b.wert);
+}
+
+function vorschau(wert) {
+  const iva = Number(state.daten.iva_satz);
+  const cents = Math.round(Number(wert) * 100);
+  const imp = Math.round((cents * 100) / (100 + iva));
+  return [(imp / 100).toFixed(2), ((cents - imp) / 100).toFixed(2)];
+}
+
+function aktualisiereZeile(tr) {
+  const inp = tr.querySelector('input.lordo');
+  const imp = tr.querySelector('.imp');
+  const iva = tr.querySelector('.iva');
+  const setze = (zelle, roh, kopierbar) => {
+    const leer = roh === '' || roh == null;
+    zelle.textContent = leer ? '–' : fmtEur(roh);
+    zelle.classList.toggle('kopie', kopierbar && !leer);
+    zelle.classList.toggle('vorschau', !kopierbar && !leer);
+    if (kopierbar && !leer) { zelle.dataset.kopie = roh; zelle.title = 'Klicken zum Kopieren'; }
+    else { delete zelle.dataset.kopie; zelle.title = !kopierbar && !leer ? 'Vorschau – erst nach dem Speichern kopierbar' : ''; }
+  };
+  if (!inp) { setze(imp, tr.dataset.imp, true); setze(iva, tr.dataset.iva, true); return; }
+  const neu = parseBetrag(inp.value);
+  const orig = parseBetrag(inp.dataset.orig);
+  const quelle = parseBetrag(inp.dataset.quelle);
+  const geaendert = !neu.fehler && !gleicherWert(neu, orig);
+  tr.classList.toggle('geaendert', geaendert);
+  inp.classList.toggle('ungueltig', !!neu.fehler);
+  tr.querySelector('[data-reset]').classList.toggle('hidden', !neu.fehler && gleicherWert(neu, quelle));
+  if (neu.fehler) { setze(imp, '', false); setze(iva, '', false); }
+  else if (!geaendert) { setze(imp, tr.dataset.imp, true); setze(iva, tr.dataset.iva, true); }
+  else if (neu.leer) { setze(imp, '', false); setze(iva, '', false); }
+  else { const [i, v] = vorschau(neu.wert); setze(imp, i, false); setze(iva, v, false); }
+}
+
+function offeneAenderungen() {
+  return [...document.querySelectorAll('#tabelle tbody tr')].filter((tr) => {
+    const inp = tr.querySelector('input.lordo');
+    if (!inp) return false;
+    const neu = parseBetrag(inp.value);
+    return neu.fehler || !gleicherWert(neu, parseBetrag(inp.dataset.orig));
+  });
+}
+
+function aktualisiereLeiste() {
+  const n = offeneAenderungen().length;
+  $('#lordo-leiste').classList.toggle('hidden', n === 0);
+  $('#lordo-anzahl').textContent = n === 1 ? '1 ungespeicherte Änderung' : `${n} ungespeicherte Änderungen`;
+}
+
+async function speichereLordo() {
+  const zeilen = offeneAenderungen();
+  if (zeilen.some((tr) => parseBetrag(tr.querySelector('input.lordo').value).fehler)) {
+    toast('Bitte ungültige Beträge (rot markiert) korrigieren, z.B. 1234,56.');
+    return;
+  }
   try {
-    await api('PUT', `/api/tag/${state.tagEdit.datum}`, {
-      benutzer: benutzer(), brutto: $('#tag-brutto').value, notiz: $('#tag-notiz').value,
+    const r = await api('PUT', `/api/monat/${state.monat}/lordo`, {
+      benutzer: benutzer(),
+      notiz: $('#lordo-notiz').value,
+      aenderungen: zeilen.map((tr) => ({ datum: tr.dataset.datum, brutto: parseBetrag(tr.querySelector('input.lordo').value).wert ?? '' })),
     });
-    $('#dlg-tag').close();
-    toast('Gespeichert.');
+    $('#lordo-notiz').value = '';
+    toast(`${r.gespeichert} Änderung(en) gespeichert.`);
     laden();
-  } catch (err) { toast(err.message); }
+  } catch (err) { zeigeFehler(err); toast([err.message, ...(err.details || [])].join(' ')); }
 }
 
-async function resetTag() {
-  try {
-    await api('DELETE', `/api/tag/${state.tagEdit.datum}`, { benutzer: benutzer() });
-    $('#dlg-tag').close();
-    toast('Wert aus der Tagesabrechnung wiederhergestellt.');
-    laden();
-  } catch (err) { toast(err.message); }
+function verwerfeLordo() {
+  document.querySelectorAll('#tabelle input.lordo').forEach((inp) => { inp.value = inp.dataset.orig; });
+  document.querySelectorAll('#tabelle tbody tr').forEach(aktualisiereZeile);
+  aktualisiereLeiste();
+}
+
+function ungespeichertOk() {
+  return offeneAenderungen().length === 0 || confirm('Es gibt ungespeicherte Änderungen. Wirklich wechseln und verwerfen?');
 }
 
 async function oeffneEinstellungen() {
@@ -442,9 +503,48 @@ async function entsperren() {
 
 $('#benutzer').value = store('benutzer') || '';
 $('#benutzer').addEventListener('change', (e) => store('benutzer', e.target.value.trim()));
-$('#prev').onclick = () => monatVerschieben(-1);
-$('#next').onclick = () => monatVerschieben(1);
-$('#monat').onchange = (e) => e.target.value && setMonat(e.target.value);
+$('#prev').onclick = () => ungespeichertOk() && monatVerschieben(-1);
+$('#next').onclick = () => ungespeichertOk() && monatVerschieben(1);
+$('#monat').onchange = (e) => {
+  if (!e.target.value) return;
+  if (!ungespeichertOk()) { e.target.value = state.monat; return; }
+  setMonat(e.target.value);
+};
+$('#tabelle tbody').addEventListener('input', (e) => {
+  if (!e.target.classList.contains('lordo')) return;
+  aktualisiereZeile(e.target.closest('tr'));
+  aktualisiereLeiste();
+});
+$('#tabelle tbody').addEventListener('keydown', (e) => {
+  if (!e.target.classList.contains('lordo')) return;
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    const felder = [...document.querySelectorAll('#tabelle input.lordo')];
+    const next = felder[felder.indexOf(e.target) + 1];
+    if (next) { next.focus(); next.select(); }
+  } else if (e.key === 'Escape') {
+    e.target.value = e.target.dataset.orig;
+    aktualisiereZeile(e.target.closest('tr'));
+    aktualisiereLeiste();
+  }
+});
+$('#tabelle tbody').addEventListener('focusin', (e) => { if (e.target.classList.contains('lordo')) e.target.select(); });
+$('#tabelle tbody').addEventListener('click', (e) => {
+  const r = e.target.closest('[data-reset]');
+  if (r) {
+    const tr = r.closest('tr');
+    const inp = tr.querySelector('input.lordo');
+    inp.value = inp.dataset.quelle;
+    aktualisiereZeile(tr);
+    aktualisiereLeiste();
+    return;
+  }
+  const k = e.target.closest('td[data-kopie]');
+  if (k) kopiere(k.dataset.kopie);
+});
+$('#lordo-speichern').onclick = speichereLordo;
+$('#lordo-verwerfen').onclick = verwerfeLordo;
+window.addEventListener('beforeunload', (e) => { if (offeneAenderungen().length) { e.preventDefault(); e.returnValue = ''; } });
 $('#btn-einstellungen').onclick = oeffneEinstellungen;
 $('#btn-xml').onclick = erstelleXml;
 $('#btn-entsperren').onclick = entsperren;
@@ -453,15 +553,13 @@ $('#btn-extern').onclick = () => { try { benutzer(); oeffneExtern(); } catch (er
 $('#ex-save').onclick = speichereExtern;
 $('#ue-tabelle tbody').onclick = (e) => {
   const tr = e.target.closest('tr[data-monat]');
-  if (tr) { setMonat(tr.dataset.monat); window.scrollTo({ top: $('.monthbar').offsetTop - 12, behavior: 'smooth' }); }
+  if (tr && ungespeichertOk()) { setMonat(tr.dataset.monat); window.scrollTo({ top: $('.monthbar').offsetTop - 12, behavior: 'smooth' }); }
 };
 $('#dateien').onclick = dateiAktion;
 $('#signiert-input').onchange = signierteDateiHochladen;
 $('#btn-drucken').onclick = () => window.print();
 $('#dezimal').value = store('dezimal') || ',';
 $('#dezimal').onchange = (e) => store('dezimal', e.target.value);
-$('#tag-save').onclick = speichereTag;
-$('#tag-reset').onclick = resetTag;
 $('#e-save').onclick = speichereEinstellungen;
 $('#up-save').onclick = bestaetigeUpload;
 
