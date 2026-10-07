@@ -52,12 +52,11 @@ th, td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: lef
 th { font-size: 12px; color: var(--muted); font-weight: 600; }
 .num { text-align: right; }
 tr.wochenende td:first-child { color: var(--muted); }
-tr.fehlt td { background: var(--warn-bg); }
+tr.ausgelassen td { color: var(--muted); }
 tr.korrigiert td { background: var(--edit-bg); }
 tfoot td { font-weight: 700; border-top: 2px solid var(--line); }
 .tag { font-size: 11px; padding: 1px 7px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
 .tag.manuell { border-color: var(--accent); color: var(--accent); }
-.tag.fehlt { border-color: var(--warn); color: var(--warn); }
 td button { padding: 2px 9px; font-size: 12px; }
 
 .actions { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -98,5 +97,5 @@ select { font: inherit; color: var(--text); background: var(--card); border: 1px
   body { background: #fff; color: #000; }
   .card, .kpi { border: 0; padding: 0; }
   main { padding: 0; }
-  tr.fehlt td, tr.korrigiert td, tr.abweichung td { background: none; }
+  tr.korrigiert td, tr.abweichung td { background: none; }
 }

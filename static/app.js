@@ -101,10 +101,7 @@ function render() {
     hinweise.push(`<div class="hinweis bad">Stammdaten fehlen – bitte <a href="#" id="link-einst">Einstellungen</a> ausfüllen:<ul>${d.einstellungen_fehler.map((f) => `<li>${esc(f)}</li>`).join('')}</ul></div>`);
   }
   const heute = new Date().toISOString().slice(0, 10);
-  const fehlend = d.tage.filter((t) => t.brutto_quelle == null && !t.korrektur && t.datum <= heute);
-  if (fehlend.length) {
-    hinweise.push(`<div class="hinweis">${fehlend.length} Tag(e) ohne Eintrag in der Tagesabrechnung – sie werden mit 0,00 € gemeldet (geschlossen/keine Abgabe). Bitte prüfen.</div>`);
-  }
+  const fehlend = d.tage.filter((t) => !t.melden && t.datum <= heute);
   const geaendert = d.tage.filter((t) => t.abweichung);
   if (geaendert.length) {
     hinweise.push(`<div class="hinweis bad">${geaendert.length} Tag(e) weichen von der letzten Übermittlung ab. Im ADM-Portal unter
@@ -125,18 +122,18 @@ function render() {
     const datum = new Date(t.datum + 'T00:00:00');
     const wt = datum.getDay();
     const cls = [wt === 0 || wt === 6 ? 'wochenende' : '', t.korrektur ? 'korrigiert' : '',
-      t.brutto_quelle == null && !t.korrektur && t.datum <= heute ? 'fehlt' : '', t.abweichung ? 'abweichung' : ''].join(' ');
+      !t.melden ? 'ausgelassen' : '', t.abweichung ? 'abweichung' : ''].join(' ');
     let quelle = '<span class="tag">Tagesabrechnung</span>';
     if (t.korrektur) quelle = `<span class="tag manuell" title="${esc(t.korrektur.notiz)} – ${esc(t.korrektur.von)}, ${fmtZeit(t.korrektur.am)}">manuell · ${esc(t.korrektur.von)}</span>`;
-    else if (t.brutto_quelle == null) quelle = t.datum <= heute ? '<span class="tag fehlt">keine Daten</span>' : '<span class="tag">–</span>';
+    else if (!t.melden) quelle = '<span class="tag">kein Eintrag · wird nicht gemeldet</span>';
     if (t.abweichung) quelle += ` <span class="tag abweichung" title="Gemeldet: ${esc(t.gemeldet ? t.gemeldet.imponibile + ' / ' + t.gemeldet.imposta : '–')}">geändert seit Meldung</span>`;
     return `<tr class="${cls}">
       <td>${WT[wt]} ${datum.toLocaleDateString('de-DE')}</td>
       <td class="num">${t.liter == null ? '–' : zahl.format(num(t.liter))}</td>
       <td class="num">${fmtEur(t.brutto_quelle)}</td>
       <td class="num"><strong>${fmtEur(t.brutto)}</strong></td>
-      <td class="num kopie" data-kopie="${t.imponibile}" title="Klicken zum Kopieren">${fmtEur(t.imponibile)}</td>
-      <td class="num kopie" data-kopie="${t.imposta}" title="Klicken zum Kopieren">${fmtEur(t.imposta)}</td>
+      ${t.melden ? `<td class="num kopie" data-kopie="${t.imponibile}" title="Klicken zum Kopieren">${fmtEur(t.imponibile)}</td>
+      <td class="num kopie" data-kopie="${t.imposta}" title="Klicken zum Kopieren">${fmtEur(t.imposta)}</td>` : '<td class="num">–</td><td class="num">–</td>'}
       <td>${quelle}</td>
       <td>${gesperrt ? '' : `<button data-tag="${t.datum}">Ändern</button>`}</td>
     </tr>`;
@@ -201,7 +198,7 @@ function oeffneTag(datum) {
   $('#tag-quelle').textContent = t.brutto_quelle == null
     ? 'Kein Eintrag in der Tagesabrechnung.'
     : `Tagesabrechnung: ${fmtEur(t.brutto_quelle)} (${zahl.format(num(t.liter))} Liter)`;
-  $('#tag-brutto').value = num(t.brutto).toFixed(2).replace('.', ',');
+  $('#tag-brutto').value = t.brutto == null ? '' : num(t.brutto).toFixed(2).replace('.', ',');
   $('#tag-notiz').value = t.korrektur?.notiz || '';
   $('#tag-reset').classList.toggle('hidden', !t.korrektur);
   $('#dlg-tag').showModal();

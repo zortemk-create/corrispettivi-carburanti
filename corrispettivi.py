@@ -51,7 +51,8 @@ def quell_werte(cur, first, last):
 
 
 def monatsdaten(cur, monat):
-    """Alle Tage eines Monats mit Quellwert, Korrektur und gueltigem Wert."""
+    """Alle Tage eines Monats mit Quellwert, Korrektur und gueltigem Wert.
+    Tage ohne Eintrag in der Tagesabrechnung (und ohne Korrektur) werden nicht gemeldet."""
     first, last = month_bounds(monat)
     cur.execute('SELECT * FROM corrispettivi.einstellungen WHERE id = 1')
     einst = cur.fetchone()
@@ -66,9 +67,11 @@ def monatsdaten(cur, monat):
         datum = first.replace(day=day)
         q = quelle.get(datum)
         k = korr.get(datum)
-        brutto = d2(k['brutto']) if k else (q['brutto'] if q else Decimal('0.00'))
-        imponibile, imposta = split_iva(brutto, iva_satz)
+        melden = bool(q or k)
+        brutto = d2(k['brutto']) if k else (q['brutto'] if q else None)
+        imponibile, imposta = split_iva(brutto, iva_satz) if melden else (None, None)
         tage.append({
+            'melden': melden,
             'datum': datum,
             'liter': q['liter'] if q else None,
             'brutto_quelle': q['brutto'] if q else None,
@@ -115,6 +118,8 @@ def baue_xml(einst, tage):
     _codice_iva(ana, 'CodiceIvaMarchio', einst['piva_marchio'])
 
     for tag in tage:
+        if not tag.get('melden', True):
+            continue
         dg = _sub(root, 'DatiGiornalieri')
         _sub(dg, 'DataRiferimento', tag['datum'].strftime('%Y-%m-%dT00:00:00'))
         cg = _sub(dg, 'CorrispettiviGiornalieri')
@@ -138,7 +143,7 @@ def validiere_xml(xml_bytes):
 def snapshot(tage):
     """Gemeldete Werte je Tag, als JSON-taugliches Dict (Strings mit 2 Nachkommastellen)."""
     return {t['datum'].isoformat(): {'imponibile': f"{t['imponibile']:.2f}", 'imposta': f"{t['imposta']:.2f}"}
-            for t in tage}
+            for t in tage if t.get('melden', True)}
 
 
 def gleich(a, b):

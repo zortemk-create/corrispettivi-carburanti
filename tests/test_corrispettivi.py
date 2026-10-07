@@ -39,6 +39,15 @@ class XmlTest(unittest.TestCase):
         self.assertIn(b'<DataRiferimento>2026-09-30T00:00:00</DataRiferimento>', xml)
         self.assertIn(b'<Imponibile>819.67</Imponibile>', xml)
 
+    def test_tage_ohne_daten_werden_ausgelassen(self):
+        monat = dt.date(2026, 9, 1)
+        t = tage(monat, ['100', '200', '300'])
+        t[1]['melden'] = False
+        xml = cr.baue_xml(EINST, t)
+        self.assertEqual(cr.validiere_xml(xml), [])
+        self.assertNotIn(b'2026-09-02T', xml)
+        self.assertEqual(list(cr.snapshot(t)), ['2026-09-01', '2026-09-03'])
+
     def test_ungueltige_ditta_wird_vom_xsd_abgelehnt(self):
         xml = cr.baue_xml({**EINST, 'codice_ditta': 'XYZ'}, tage(dt.date(2026, 9, 1), ['1']))
         self.assertTrue(cr.validiere_xml(xml))

@@ -154,7 +154,7 @@ def monat_lesen(cur, monat):
         }
         iso = t['datum'].isoformat()
         t['gemeldet'] = gemeldet.get(iso)
-        t['abweichung'] = bool(gemeldet) and not cr.gleich(gemeldet.get(iso), aktuell[iso])
+        t['abweichung'] = bool(gemeldet) and not cr.gleich(gemeldet.get(iso), aktuell.get(iso))
     return antwort({
         'monat': monat,
         'status': monat_status(cur, m),
@@ -178,7 +178,8 @@ def letzte_meldung(cur, m):
 
 
 def summen(tage):
-    return {k: sum((t[k] for t in tage), Decimal('0')) for k in ('brutto', 'imponibile', 'imposta')}
+    gemeldet = [t for t in tage if t['melden']]
+    return {k: sum((t[k] for t in gemeldet), Decimal('0')) for k in ('brutto', 'imponibile', 'imposta')}
 
 
 @app.put('/api/tag/<datum>')
@@ -234,6 +235,8 @@ def neue_version(cur, m, benutzer, iut=None):
     fehler = cr.pruefe_einstellungen(einst)
     if fehler:
         raise Fehler('Stammdaten unvollständig – bitte unter „Einstellungen“ ergänzen.', details=fehler)
+    if not any(t['melden'] for t in tage):
+        raise Fehler('In diesem Monat gibt es keine Tage mit Daten.')
 
     xml = cr.baue_xml(einst, tage)
     fehler = cr.validiere_xml(xml)

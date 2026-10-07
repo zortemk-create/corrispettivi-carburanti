@@ -10,12 +10,12 @@ Die Werte werden automatisch aus der Datenbank der **Tagesabrechnung** gelesen
 ## Monatlicher Ablauf (manuell, ca. 15 Minuten)
 
 1. Dashboard öffnen – es zeigt standardmäßig den Vormonat und die Frist.
-2. Werte prüfen. Gelb = Tag ohne Eintrag in der Tagesabrechnung (wird mit 0,00 € gemeldet).
-   Achtung: Fehlt ein Tag, enthält der Folgetag meist die Liter beider Tage – dann über
-   **Ändern** aufteilen (mit Notiz; wird protokolliert, jederzeit zurücksetzbar).
+2. Werte prüfen. Sie kommen 1:1 aus der Tagesabrechnung. Tage ohne Eintrag werden nicht gemeldet
+   (grau, im Portal leer lassen). Einzelne Werte lassen sich bei Bedarf über **Ändern** überschreiben
+   (mit Notiz; wird protokolliert, jederzeit zurücksetzbar).
 3. Im **Portale Unico Dogane e Monopoli** (SPID/CNS) → *Servizi online* →
    *Corrispettivi Distributori Carburanti* → *Acquisizione corrispettivi* Monat/Jahr wählen und je Tag
-   **Imponibile** und **Imposta** eintragen. Klick auf einen Betrag im Dashboard kopiert ihn
+   **Imponibile** und **Imposta** eintragen (ausgelassene Tage leer lassen). Klick auf einen Betrag im Dashboard kopiert ihn
    (Kopierformat `1234,56` oder `1234.56` wählbar).
 4. *Salva* → *Invia*. Die angezeigte **IUT** im Dashboard unter **Übermittlung bestätigen** eintragen.
    Die gemeldeten Werte werden je Tag mit IUT gespeichert und der Monat gesperrt.
