@@ -333,7 +333,10 @@ async function bestaetigeUpload(e) {
 async function erstelleXml() {
   try {
     const r = await api('POST', `/api/monat/${state.monat}/xml`, { benutzer: benutzer() });
-    toast(`${r.dateiname} erstellt und gegen das ADM-Schema geprüft (Archiv).`);
+    toast(`${r.dateiname} erstellt und gegen das ADM-Schema geprüft.`);
+    const a = document.createElement('a');
+    a.href = `/api/datei/${r.id}`;
+    a.click();
     laden();
   } catch (err) { zeigeFehler(err); }
 }
