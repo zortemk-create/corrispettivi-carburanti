@@ -6,10 +6,13 @@ from functools import wraps
 
 from flask import Flask, Response, jsonify, request, send_from_directory
 
+import adm
 import corrispettivi as cr
+import signatur
 from db import BASE_DIR, ENV, get_connection, init_schema
 
 app = Flask(__name__, static_folder='static', static_url_path='/static')
+app.config['MAX_CONTENT_LENGTH'] = 5 * 1024 * 1024
 OUTPUT_DIR = os.path.join(BASE_DIR, 'output')
 APP_PASSWORD = ENV.get('APP_PASSWORD', '')
 
@@ -140,11 +143,16 @@ def monat_lesen(cur, monat):
     einst, tage = cr.monatsdaten(cur, m)
     cur.execute(
         '''SELECT id, version, dateiname, summe_brutto, summe_imponibile, summe_imposta,
-                  erstellt_von, erstellt_am, hochgeladen_von, hochgeladen_am, ricevuta
+                  erstellt_von, erstellt_am, hochgeladen_von, hochgeladen_am, ricevuta,
+                  xml_signiert IS NOT NULL AS signiert, signatur, signiert_von, signiert_am,
+                  adm_umgebung, adm_iut, adm_codice, adm_text, adm_esito, adm_gesendet_von, adm_gesendet_am,
+                  adm_geprueft_am
              FROM corrispettivi.dateien WHERE monat = %s ORDER BY version DESC''',
         (m,),
     )
     dateien = cur.fetchall()
+    for f in dateien:
+        f['adm_art'] = adm.stato_art(f['adm_codice']) if f['adm_codice'] else None
     gemeldet = letzte_meldung(cur, m)
     aktuell = cr.snapshot(tage)
     for t in tage:
@@ -231,7 +239,7 @@ def tag_zuruecksetzen(cur, datum):
 
 # ---------- XML erzeugen / Uebermittlung bestaetigen ----------
 
-IUT_MUSTER = re.compile(r'^[0-9]{8}[A-Z0-9]{11}$')
+IUT_MUSTER = re.compile(r'^\d{8}[A-Z]\d{10}$')   # z.B. 20261005M4152744735
 
 
 def neue_version(cur, m, benutzer, iut=None):
@@ -255,11 +263,7 @@ def neue_version(cur, m, benutzer, iut=None):
     summe = summen(tage)
     snap = cr.snapshot(tage)
     if iut:
-        # Je Tag merken, mit welcher IUT der aktuelle Wert gemeldet wurde (noetig fuer ein spaeteres Annullamento)
-        vorher = letzte_meldung(cur, m)
-        for iso, werte in snap.items():
-            alt = vorher.get(iso)
-            werte['iut'] = alt['iut'] if alt and alt.get('iut') and cr.gleich(alt, werte) else iut
+        snap = snapshot_mit_iut(cur, m, snap, iut)
     cur.execute(
         '''INSERT INTO corrispettivi.dateien
              (monat, version, dateiname, xml, summe_brutto, summe_imponibile, summe_imposta, erstellt_von, tage,
@@ -274,6 +278,25 @@ def neue_version(cur, m, benutzer, iut=None):
     with open(os.path.join(OUTPUT_DIR, name), 'wb') as f:
         f.write(xml)
     return datei_id, name, summe
+
+
+def snapshot_mit_iut(cur, m, snap, iut):
+    """Je Tag merken, mit welcher IUT der aktuelle Wert gemeldet wurde (noetig fuer ein spaeteres Annullamento)."""
+    vorher = letzte_meldung(cur, m)
+    for iso, werte in snap.items():
+        alt = vorher.get(iso)
+        werte['iut'] = alt['iut'] if alt and alt.get('iut') and cr.gleich(alt, werte) else iut
+    return snap
+
+
+def markiere_uebermittelt(cur, m, iut, quelle='selbst', datum=None):
+    cur.execute(
+        '''INSERT INTO corrispettivi.monate (monat, status, quelle, iut, gemeldet_am)
+           VALUES (%s, 'uebermittelt', %s, %s, COALESCE(%s, CURRENT_DATE))
+           ON CONFLICT (monat) DO UPDATE SET status = 'uebermittelt', quelle = EXCLUDED.quelle,
+                iut = EXCLUDED.iut, gemeldet_am = EXCLUDED.gemeldet_am''',
+        (m, quelle, iut, datum),
+    )
 
 
 @app.post('/api/monat/<monat>/xml')
@@ -310,13 +333,7 @@ def uebermittlung_bestaetigen(cur, monat):
     m = cr.parse_monat(monat)
     pruefe_offen(cur, m)
     _, name, summe = neue_version(cur, m, benutzer, iut)
-    cur.execute(
-        '''INSERT INTO corrispettivi.monate (monat, status, quelle, iut, gemeldet_am)
-           VALUES (%s, 'uebermittelt', 'selbst', %s, CURRENT_DATE)
-           ON CONFLICT (monat) DO UPDATE SET status = 'uebermittelt', quelle = 'selbst',
-                iut = EXCLUDED.iut, gemeldet_am = EXCLUDED.gemeldet_am''',
-        (m, iut),
-    )
+    markiere_uebermittelt(cur, m, iut)
     protokolliere(cur, benutzer, 'upload_bestaetigt', m, datei=name, ricevuta=iut, **summe)
     return antwort({'ok': True})
 
@@ -341,13 +358,7 @@ def extern_gemeldet(cur, monat):
     if datum > heute or datum <= cr.month_bounds(m)[1]:
         raise Fehler('Das Meldedatum muss nach Monatsende und darf nicht in der Zukunft liegen.')
     pruefe_offen(cur, m)
-    cur.execute(
-        '''INSERT INTO corrispettivi.monate (monat, status, quelle, iut, gemeldet_am)
-           VALUES (%s, 'uebermittelt', 'enilive', %s, %s)
-           ON CONFLICT (monat) DO UPDATE SET status = 'uebermittelt', quelle = 'enilive',
-                iut = EXCLUDED.iut, gemeldet_am = EXCLUDED.gemeldet_am''',
-        (m, iut, datum),
-    )
+    markiere_uebermittelt(cur, m, iut, 'enilive', datum)
     protokolliere(cur, benutzer, 'extern_gemeldet', m, quelle='enilive', iut=iut, datum=datum)
     return antwort({'ok': True})
 
@@ -390,6 +401,158 @@ def uebersicht(cur):
             })
             m = cr.month_bounds(m)[1] + cr.dt.timedelta(days=1)
     return antwort({'heute': heute, 'monate': monate})
+
+
+# ---------- ADM-Web-Service: signierte Datei, Versand, Status ----------
+
+def lade_datei(cur, datei_id):
+    cur.execute('SELECT * FROM corrispettivi.dateien WHERE id = %s', (datei_id,))
+    datei = cur.fetchone()
+    if not datei:
+        raise Fehler('Datei nicht gefunden.', 404)
+    return datei
+
+
+def pruefe_neueste(cur, datei):
+    cur.execute('SELECT MAX(version) AS v FROM corrispettivi.dateien WHERE monat = %s', (datei['monat'],))
+    if cur.fetchone()['v'] != datei['version']:
+        raise Fehler('Nur die neueste Version eines Monats kann signiert und gesendet werden.', 409)
+
+
+@app.get('/api/adm')
+def adm_konfiguration():
+    k = adm.Konfiguration()
+    info, fehler = None, k.fehler()
+    if not fehler:
+        try:
+            info = k.zertifikat_info()
+        except adm.AdmFehler as e:
+            fehler = [str(e)]
+    return antwort({'umgebung': k.umgebung, 'fehler': fehler, 'zertifikat': info})
+
+
+@app.post('/api/datei/<int:datei_id>/signiert')
+@db_tx
+def signierte_datei_hochladen(cur, datei_id):
+    benutzer = benutzer_aus(request.form)
+    hochgeladen = request.files.get('datei')
+    if not hochgeladen:
+        raise Fehler('Bitte die signierte Datei auswählen.')
+    datei = lade_datei(cur, datei_id)
+    pruefe_neueste(cur, datei)
+    if datei['adm_iut'] and datei['adm_umgebung'] == 'reale':
+        raise Fehler('Diese Datei wurde bereits an die ADM gesendet.', 409)
+    inhalt = hochgeladen.read()
+    ergebnis = signatur.pruefe_signierte_datei(inhalt, datei['xml'].encode('utf-8'))
+    cur.execute(
+        '''UPDATE corrispettivi.dateien
+              SET xml_signiert = %s, signatur = %s, signiert_von = %s, signiert_am = now(),
+                  adm_umgebung = NULL, adm_iut = NULL, adm_codice = NULL, adm_text = NULL, adm_esito = NULL,
+                  adm_gesendet_von = NULL, adm_gesendet_am = NULL, adm_geprueft_am = NULL
+            WHERE id = %s''',
+        (inhalt.decode('utf-8') if ergebnis['ok'] else None, json.dumps(ergebnis), benutzer, datei_id),
+    )
+    protokolliere(cur, benutzer, 'signiert_hochgeladen', datei['monat'], datei=datei['dateiname'],
+                  ok=ergebnis['ok'], fehler=ergebnis['fehler'])
+    return antwort(ergebnis)
+
+
+@app.get('/api/datei/<int:datei_id>/signiert')
+@db_tx
+def signierte_datei_download(cur, datei_id):
+    datei = lade_datei(cur, datei_id)
+    if not datei['xml_signiert']:
+        raise Fehler('Keine gültige signierte Datei vorhanden.', 404)
+    name = datei['dateiname'].replace('.xml', '_signiert.xml')
+    return Response(datei['xml_signiert'], mimetype='application/xml',
+                    headers={'Content-Disposition': f'attachment; filename="{name}"'})
+
+
+@app.post('/api/datei/<int:datei_id>/senden')
+@db_tx
+def an_adm_senden(cur, datei_id):
+    body = request.get_json(force=True)
+    benutzer = benutzer_aus(body)
+    datei = lade_datei(cur, datei_id)
+    pruefe_neueste(cur, datei)
+    if not datei['xml_signiert']:
+        raise Fehler('Zuerst die signierte Datei hochladen.')
+    if datei['adm_iut'] and adm.stato_art(datei['adm_codice']) != 'fehler':
+        raise Fehler(f'Bereits gesendet (IUT {datei["adm_iut"]}). Status über „Status abfragen“ prüfen.', 409)
+    try:
+        client = adm.AdmClient()
+    except adm.AdmFehler as e:
+        raise Fehler(f'ADM-Web-Service nicht eingerichtet: {e}')
+    echt = client.k.umgebung == 'reale'
+    if echt:
+        pruefe_offen(cur, datei['monat'])
+        if body.get('bestaetigt') is not True:
+            raise Fehler('Echtversand muss ausdrücklich bestätigt werden.')
+
+    cur.execute('SELECT * FROM corrispettivi.einstellungen WHERE id = 1')
+    einst = cur.fetchone()
+    try:
+        r = client.invio(datei['xml_signiert'].encode('utf-8'), adm.dichiarante(einst))
+    except adm.AdmFehler as e:
+        protokolliere(cur, benutzer, 'adm_senden_fehler', datei['monat'], datei=datei['dateiname'],
+                      umgebung=client.k.umgebung, fehler=str(e))
+        raise Fehler(str(e), 502)
+
+    codice = r['codice'] or ''
+    text = adm.STATI.get(codice) or '; '.join(r['messaggi'])
+    cur.execute(
+        '''UPDATE corrispettivi.dateien
+              SET adm_umgebung = %s, adm_iut = %s, adm_codice = %s, adm_text = %s, adm_esito = %s,
+                  adm_gesendet_von = %s, adm_gesendet_am = now()
+            WHERE id = %s''',
+        (client.k.umgebung, r['iut'], codice, text, json.dumps(r['esito']) if r['esito'] else None, benutzer, datei_id),
+    )
+    if echt and r['iut'] and adm.stato_art(codice) != 'fehler':
+        snap = snapshot_mit_iut(cur, datei['monat'], datei['tage'] or {}, r['iut'])
+        cur.execute(
+            '''UPDATE corrispettivi.dateien SET tage = %s, hochgeladen_von = %s, hochgeladen_am = now(), ricevuta = %s
+                WHERE id = %s''',
+            (json.dumps(snap), benutzer, r['iut'], datei_id),
+        )
+        markiere_uebermittelt(cur, datei['monat'], r['iut'])
+    protokolliere(cur, benutzer, 'adm_gesendet', datei['monat'], datei=datei['dateiname'],
+                  umgebung=client.k.umgebung, iut=r['iut'], codice=codice, text=text)
+    return antwort({'ok': adm.stato_art(codice) != 'fehler', 'iut': r['iut'], 'codice': codice, 'text': text,
+                    'umgebung': client.k.umgebung})
+
+
+@app.post('/api/datei/<int:datei_id>/status')
+@db_tx
+def adm_status(cur, datei_id):
+    benutzer = benutzer_aus(request.get_json(force=True))
+    datei = lade_datei(cur, datei_id)
+    if not datei['adm_iut']:
+        raise Fehler('Diese Datei wurde noch nicht an die ADM gesendet.')
+    try:
+        client = adm.AdmClient()
+        if client.k.umgebung != datei['adm_umgebung']:
+            raise Fehler(f'Die Datei wurde in der Umgebung „{datei["adm_umgebung"]}“ gesendet, '
+                         f'eingestellt ist „{client.k.umgebung}“.')
+        st = client.stato(datei['adm_iut'])
+        esito = None
+        if st['art'] != 'laeuft':
+            esito = client.recupera_esito(datei['adm_iut']).get('esito')
+    except adm.AdmFehler as e:
+        raise Fehler(str(e), 502)
+    cur.execute(
+        '''UPDATE corrispettivi.dateien
+              SET adm_codice = %s, adm_text = %s, adm_esito = COALESCE(%s, adm_esito), adm_geprueft_am = now()
+            WHERE id = %s''',
+        (st['codice'], st['text'], json.dumps(esito) if esito else None, datei_id),
+    )
+    if datei['adm_umgebung'] == 'reale' and st['art'] == 'fehler':
+        # Von der ADM abgelehnt: Monat wieder freigeben, damit korrigiert und neu gesendet werden kann
+        cur.execute("UPDATE corrispettivi.monate SET status = 'offen' WHERE monat = %s", (datei['monat'],))
+        cur.execute('UPDATE corrispettivi.dateien SET hochgeladen_am = NULL, hochgeladen_von = NULL WHERE id = %s',
+                    (datei_id,))
+    protokolliere(cur, benutzer, 'adm_status', datei['monat'], datei=datei['dateiname'], iut=datei['adm_iut'],
+                  codice=st['codice'], text=st['text'])
+    return antwort({**st, 'esito': esito})
 
 
 @app.post('/api/monat/<monat>/entsperren')

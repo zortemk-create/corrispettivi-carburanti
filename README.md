@@ -29,6 +29,34 @@ Häkchen *Corrispettivi* und die Data di riferimento angeben, danach nur diese T
 die neue IUT bestätigen. (Ein bereits gemeldeter Tag wird sonst mit „D001 Data di riferimento già
 acquisita“ abgelehnt.)
 
+## Versand über den ADM-Web-Service
+
+1. **XML-Datei erstellen & herunterladen** (gegen das ADM-Schema geprüft).
+2. Mit der Firma remota als **XAdES-BES, enveloped** signieren. Die ADM verlangt zusätzlich ein `Id`-Attribut an
+   `ds:Signature` und `ds:SignatureValue`; eine `.p7m`-Datei (CAdES) wird nicht angenommen.
+3. **Signierte Datei hochladen** – `signatur.py` prüft Struktur, Id-Attribute, kryptografische Gültigkeit
+   (mit dem eingebetteten Zertifikat) und dass der Inhalt exakt der erzeugten Datei entspricht.
+4. **An ADM senden** – `adm.py` ruft `invioDistributoriCarburanti` mit dem Authentifizierungs-Zertifikat auf.
+   Im Echtbetrieb ist eine ausdrückliche Bestätigung nötig; der Monat wird mit der IUT als gemeldet gesperrt.
+5. **Status abfragen** – `selezionaStato` (REST) und bei Abschluss `recuperaEsito` (Fehler/Segnalazioni).
+   Lehnt die ADM ab (197/198), wird der Monat wieder freigegeben.
+
+Konfiguration in `.env` (Zertifikat aus PUDM → *Gestione Certificati*, Dateien im Ordner `zertifikate/`,
+der von Git ausgeschlossen ist):
+
+```
+ADM_UMGEBUNG=prova          # prova = Testumgebung (addestramento), reale = Echtbetrieb
+ADM_CERT_DATEI=zertifikate\<datei>.p12
+ADM_CERT_PASSWORT=...
+```
+
+Als `dichiarante` wird die Partita IVA des Gestore gesendet. Endpunkte laut ADM-Handbuch 2.3 (2021):
+`interoptest.adm.gov.it` (prova) bzw. `interop.adm.gov.it` (reale).
+
+**Stand:** Gegen die echte ADM noch nicht getestet (Zertifikat fehlt). Getestet sind Nachrichtenaufbau
+(gegen das WSDL-Schema), Signaturprüfung und der komplette Ablauf gegen die Simulation `tests/fake_adm.py`
+(`ADM_BASIS_URL=http://127.0.0.1:5099`).
+
 ## Voraussetzungen / Umstellung von Enilive
 
 - Im PUDM über MAU das Profil **`dlr_distributori`** für den Gestore (oder eine beauftragte Person)
@@ -36,6 +64,9 @@ acquisita“ abgelehnt.)
 - Mit Enilive einen **Stichtag** vereinbaren, ab dem Enilive nicht mehr meldet. Doppelte Meldungen
   werden von der ADM abgelehnt bzw. führen zu Abweichungen.
 - Für die Web-Anwendung ist keine digitale Signatur nötig (Login per SPID/CNS).
+- Stand 07.10.2026: Profile `dlr_distributori` (seit 2021) und `dlr_gestione_certificati_aut` sind freigegeben.
+  `dlr_distributori` ist seit 18.03.2021 an 03618500403 delegiert (meldet für Enilive) – Delega erst nach dem
+  vereinbarten Stichtag widerrufen.
 
 ## Meldestatus-Übersicht und API
 

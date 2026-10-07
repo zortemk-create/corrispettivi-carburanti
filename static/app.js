@@ -186,24 +186,107 @@ function render() {
   $('#btn-extern').classList.toggle('hidden', gesperrt);
   $('#btn-entsperren').classList.toggle('hidden', !gesperrt);
 
+  const neueste = d.dateien[0]?.id;
   $('#dateien').innerHTML = d.dateien.length ? d.dateien.map((f) => `
     <div class="datei">
       <div>
         <strong>${esc(f.dateiname)}</strong>
         <div class="meta">Erstellt ${fmtZeit(f.erstellt_am)} von ${esc(f.erstellt_von)} · Lordo ${fmtEur(f.summe_brutto)} · Imponibile ${fmtEur(f.summe_imponibile)} · IVA ${fmtEur(f.summe_imposta)}</div>
         ${f.hochgeladen_am
-          ? `<div class="meta" style="color:var(--ok)">✓ Übermittelt · IUT <strong>${esc(f.ricevuta)}</strong> · bestätigt ${fmtZeit(f.hochgeladen_am)} von ${esc(f.hochgeladen_von)}</div>`
-          : '<div class="meta">Nur Archiv-Datei, nicht als übermittelt bestätigt</div>'}
+          ? `<div class="meta" style="color:var(--ok)">✓ Übermittelt · IUT <strong>${esc(f.ricevuta)}</strong> · ${fmtZeit(f.hochgeladen_am)} von ${esc(f.hochgeladen_von)}</div>`
+          : '<div class="meta">Nicht übermittelt</div>'}
+        ${renderSignatur(f)}
+        ${renderAdm(f)}
       </div>
       <div class="btns">
         <a href="/api/datei/${f.id}"><button type="button">Download XML</button></a>
+        ${f.signiert ? `<a href="/api/datei/${f.id}/signiert"><button type="button">Signierte Datei</button></a>` : ''}
+        ${f.id === neueste && !f.hochgeladen_am ? `
+          <button type="button" data-aktion="upload" data-id="${f.id}">Signierte Datei hochladen</button>
+          ${f.signiert && (!f.adm_iut || f.adm_art === 'fehler') ? `<button type="button" class="primary" data-aktion="senden" data-id="${f.id}" ${state.adm?.fehler.length ? 'disabled' : ''}>${state.adm?.umgebung === 'reale' ? 'An ADM senden (ECHT)' : 'An ADM senden (Test)'}</button>` : ''}` : ''}
+        ${f.adm_iut ? `<button type="button" data-aktion="status" data-id="${f.id}">Status abfragen</button>` : ''}
       </div>
     </div>`).join('') : '<p class="muted">Noch keine Datei für diesen Monat erstellt.</p>';
 }
 
+function renderSignatur(f) {
+  const s = f.signatur;
+  if (!s) return '';
+  if (!s.ok) {
+    return `<div class="meta" style="color:var(--bad)">✗ Signierte Datei abgelehnt (${fmtZeit(f.signiert_am)}):<ul>${s.fehler.map((x) => `<li>${esc(x)}</li>`).join('')}</ul></div>`;
+  }
+  const u = s.unterzeichner;
+  return `<div class="meta" style="color:var(--ok)">✓ Signatur geprüft${u ? ` · ${esc(u.name)}${u.codice_fiscale ? ' (' + esc(u.codice_fiscale) + ')' : ''} · Zertifikat bis ${fmtDatum(u.gueltig_bis.slice(0, 10))}` : ''}</div>`;
+}
+
+function renderAdm(f) {
+  if (!f.adm_iut && !f.adm_codice) return '';
+  const farbe = { ok: 'var(--ok)', fehler: 'var(--bad)', laeuft: 'var(--warn)' }[f.adm_art] || 'var(--muted)';
+  const e = f.adm_esito || {};
+  const liste = (titel, xs) => (xs && xs.length ? `<div>${titel}:<ul>${xs.map((x) => `<li>${esc(x.codice)} – ${esc(x.descrizione)}</li>`).join('')}</ul></div>` : '');
+  return `<div class="meta" style="color:${farbe}">ADM ${f.adm_umgebung === 'reale' ? '(Echtbetrieb)' : '(Testumgebung)'} · IUT ${esc(f.adm_iut || '–')} · ${esc(f.adm_codice)} ${esc(f.adm_text || '')}
+    · gesendet ${fmtZeit(f.adm_gesendet_am)}${f.adm_geprueft_am ? ' · geprüft ' + fmtZeit(f.adm_geprueft_am) : ''}
+    ${liste('Fehler', e.errori)}${liste('Hinweise', e.segnalazioni)}</div>`;
+}
+
+async function ladeAdm() {
+  try {
+    state.adm = await api('GET', '/api/adm');
+    const a = state.adm;
+    const umg = a.umgebung === 'reale' ? '<strong>ECHTBETRIEB</strong>' : 'Testumgebung (prova)';
+    $('#adm-info').innerHTML = a.fehler.length
+      ? `ADM-Web-Service nicht eingerichtet: ${a.fehler.map(esc).join(' ')}`
+      : `ADM-Web-Service: ${umg} · Zertifikat ${esc(a.zertifikat.name)} gültig bis ${fmtDatum(a.zertifikat.gueltig_bis.slice(0, 10))}`;
+  } catch (err) { state.adm = null; }
+}
+
+async function dateiAktion(e) {
+  const b = e.target.closest('button[data-aktion]');
+  if (!b) return;
+  const id = Number(b.dataset.id);
+  try {
+    const name = benutzer();
+    if (b.dataset.aktion === 'upload') {
+      state.uploadDatei = id;
+      $('#signiert-input').value = '';
+      $('#signiert-input').click();
+      return;
+    }
+    if (b.dataset.aktion === 'senden') {
+      const echt = state.adm?.umgebung === 'reale';
+      if (echt && !confirm('ECHTE Meldung an die ADM senden? Gemeldete Tage können danach nur per Annullamento geändert werden.')) return;
+      b.disabled = true;
+      const r = await api('POST', `/api/datei/${id}/senden`, { benutzer: name, bestaetigt: echt });
+      toast(`Gesendet · IUT ${r.iut} · ${r.codice} ${r.text}`);
+    }
+    if (b.dataset.aktion === 'status') {
+      b.disabled = true;
+      const r = await api('POST', `/api/datei/${id}/status`, { benutzer: name });
+      toast(`Status ${r.codice}: ${r.text}`);
+    }
+    laden();
+  } catch (err) { b.disabled = false; zeigeFehler(err); }
+}
+
+async function signierteDateiHochladen() {
+  const datei = $('#signiert-input').files[0];
+  if (!datei) return;
+  const form = new FormData();
+  form.append('datei', datei);
+  form.append('benutzer', $('#benutzer').value.trim());
+  try {
+    const res = await fetch(`/api/datei/${state.uploadDatei}/signiert`, { method: 'POST', body: form });
+    const r = await res.json();
+    if (!res.ok) throw Object.assign(new Error(r.error || `Fehler ${res.status}`), { details: r.details || [] });
+    toast(r.ok ? 'Signatur geprüft – bereit zum Senden.' : 'Signierte Datei abgelehnt – Details bei der Datei.');
+    laden();
+  } catch (err) { zeigeFehler(err); }
+}
+
 const AKTIONEN = {
   korrektur: 'Tag korrigiert', korrektur_entfernt: 'Korrektur entfernt', xml_erstellt: 'XML erstellt',
-  upload_bestaetigt: 'Übermittlung bestätigt', extern_gemeldet: 'Von Enilive gemeldet markiert', korrektur_geoeffnet: 'Korrektur geöffnet', einstellungen: 'Einstellungen',
+  upload_bestaetigt: 'Übermittlung bestätigt', signiert_hochgeladen: 'Signierte Datei hochgeladen',
+  adm_gesendet: 'An ADM gesendet', adm_senden_fehler: 'Senden an ADM fehlgeschlagen', adm_status: 'ADM-Status abgefragt', extern_gemeldet: 'Von Enilive gemeldet markiert', korrektur_geoeffnet: 'Korrektur geöffnet', einstellungen: 'Einstellungen',
 };
 
 async function ladeProtokoll() {
@@ -222,6 +305,10 @@ function beschreibe(p) {
   if (p.aktion === 'xml_erstellt') return `${d.datei}`;
   if (p.aktion === 'upload_bestaetigt') return `IUT ${d.ricevuta} · Imponibile ${d.imponibile} · Imposta ${d.imposta}`;
   if (p.aktion === 'extern_gemeldet') return `IUT ${d.iut} · gemeldet am ${d.datum}`;
+  if (p.aktion === 'signiert_hochgeladen') return `${d.datei} · ${d.ok ? 'gültig' : 'abgelehnt'}`;
+  if (p.aktion === 'adm_gesendet') return `${d.umgebung} · IUT ${d.iut} · ${d.codice} ${d.text}`;
+  if (p.aktion === 'adm_senden_fehler') return `${d.umgebung} · ${d.fehler}`;
+  if (p.aktion === 'adm_status') return `IUT ${d.iut} · ${d.codice} ${d.text}`;
   if (p.aktion === 'korrektur_geoeffnet') return `– ${d.grund}`;
   return '';
 }
@@ -369,6 +456,8 @@ $('#ue-tabelle tbody').onclick = (e) => {
   const tr = e.target.closest('tr[data-monat]');
   if (tr) { setMonat(tr.dataset.monat); window.scrollTo({ top: $('.monthbar').offsetTop - 12, behavior: 'smooth' }); }
 };
+$('#dateien').onclick = dateiAktion;
+$('#signiert-input').onchange = signierteDateiHochladen;
 $('#btn-drucken').onclick = () => window.print();
 $('#dezimal').value = store('dezimal') || ',';
 $('#dezimal').onchange = (e) => store('dezimal', e.target.value);
@@ -380,4 +469,4 @@ $('#up-save').onclick = bestaetigeUpload;
 // Standard: Vormonat (der Monat, der als Nächstes zu melden ist)
 const jetzt = new Date();
 const vm = new Date(jetzt.getFullYear(), jetzt.getMonth() - 1, 1);
-setMonat(`${vm.getFullYear()}-${String(vm.getMonth() + 1).padStart(2, '0')}`);
+ladeAdm().finally(() => setMonat(`${vm.getFullYear()}-${String(vm.getMonth() + 1).padStart(2, '0')}`));

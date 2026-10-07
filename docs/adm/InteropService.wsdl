@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wsdl:definitions xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/" xmlns:impl="http://service.ws.sogei.it" xmlns:intf="http://service.ws.sogei.it" xmlns:tns2="http://output.ws.sogei.it" xmlns:tns3="http://datatype.xml.javax" xmlns:wsdlsoap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:wsi="http://ws-i.org/profiles/basic/1.1/xsd" xmlns:xsd="http://www.w3.org/2001/XMLSchema" targetNamespace="http://service.ws.sogei.it">
+	<wsdl:types>
+		<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="http://service.ws.sogei.it">
+			<import namespace="http://output.ws.sogei.it"/>
+			<element name="recuperaEsitoResponse">
+				<complexType>
+					<sequence>
+						<element name="recuperaEsitoReturn" nillable="true" type="tns2:Risposta"/>
+					</sequence>
+				</complexType>
+			</element>
+			<element name="recuperaEsito">
+				<complexType>
+					<sequence>
+						<element name="iut">
+							<simpleType>
+								<restriction base="xsd:string">
+									<pattern value="^(((((1[26]|2[048])00)|[12]\d([2468][048]|[13579][26]|0[48]))((((0[13578]|1[02])(0[1-9]|[12]\d|3[01]))|((0[469]|11)(0[1-9]|[12]\d|30)))|(02(0[1-9]|[12]\d))))|((([12]\d([02468][1235679]|[13579][01345789]))|((1[1345789]|2[1235679])00))((((0[13578]|1[02])(0[1-9]|[12]\d|3[01]))|((0[469]|11)(0[1-9]|[12]\d|30)))|(02(0[1-9]|1\d|2[0-8])))))[A-Z]{1}[0-9]{1}[0-9]{9}$"/>
+								</restriction>
+							</simpleType>
+						</element>
+					</sequence>
+				</complexType>
+			</element>
+		</schema>
+		<schema xmlns="http://www.w3.org/2001/XMLSchema" targetNamespace="http://output.ws.sogei.it">
+			<complexType name="Risposta">
+				<sequence>
+					<element name="IUT" type="xsd:string"/>
+					<element minOccurs="0" name="esito" type="tns2:EsitoType"/>
+					<element minOccurs="0" name="data" type="xsd:base64Binary"/>
+					<element name="dataRegistrazione" type="xsd:date"/>
+				</sequence>
+			</complexType>
+			<complexType name="EsitoType">
+				<sequence>
+					<element minOccurs="0" name="codice" type="xsd:string"/>
+					 <element name="messaggio" minOccurs="0" maxOccurs="unbounded"  type="xsd:string"/>
+				</sequence>
+			</complexType>
+		</schema>
+	</wsdl:types>
+	<wsdl:message name="recuperaEsitoRequest">
+		<wsdl:part name="parameters" element="impl:recuperaEsito">
+    </wsdl:part>
+	</wsdl:message>
+	<wsdl:message name="recuperaEsitoResponse">
+		<wsdl:part name="parameters" element="impl:recuperaEsitoResponse">
+    </wsdl:part>
+	</wsdl:message>
+	<wsdl:portType name="InteropService">
+		<wsdl:operation name="recuperaEsito">
+			<wsdl:input name="recuperaEsitoRequest" message="impl:recuperaEsitoRequest">
+    </wsdl:input>
+			<wsdl:output name="recuperaEsitoResponse" message="impl:recuperaEsitoResponse">
+    </wsdl:output>
+		</wsdl:operation>
+	</wsdl:portType>
+	<wsdl:binding name="InteropServiceSoapBinding" type="impl:InteropService">
+		<wsdlsoap:binding style="document" transport="http://schemas.xmlsoap.org/soap/http"/>
+		<wsaw:UsingAddressing xmlns:wsaw="http://www.w3.org/2006/05/addressing/wsdl" wsdl:required="false"/>
+		<wsdl:operation name="recuperaEsito">
+			<wsdlsoap:operation soapAction=""/>
+			<wsdl:input name="recuperaEsitoRequest">
+				<wsdlsoap:body use="literal"/>
+			</wsdl:input>
+			<wsdl:output name="recuperaEsitoResponse">
+				<wsdlsoap:body use="literal"/>
+			</wsdl:output>
+		</wsdl:operation>
+	</wsdl:binding>
+	<wsdl:service name="InteropService">
+		<wsdl:port name="InteropService" binding="impl:InteropServiceSoapBinding">
+			<wsdlsoap:address location="http://localhost:9080/InteropServiceWEB/InteropService"/>
+		</wsdl:port>
+	</wsdl:service>
+</wsdl:definitions>

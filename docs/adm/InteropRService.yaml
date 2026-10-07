@@ -1,0 +1,34 @@
+---
+swagger: "2.0"
+info:
+  version: "1.0.2"
+  title: "API REST InteropRService"
+basePath: "/InteropRServiceWeb/services"
+tags:
+- name: "InteropRService"
+paths:
+  /InteropRService/selezionaStato/{iut}:
+    get:
+      tags:
+      - "InteropRService"
+      summary: "Seleziona stato"
+      description: "Il servizio restituisce lo stato a fronte di un IUT."
+      operationId: "selezionaStato"
+      parameters:
+      - name: "iut"
+        in: "path"
+        description: "IUT di cui si vuole recuperare lo stato."
+        required: true
+        type: "string"
+        x-example: "20170426M1000000013"
+      responses:
+        200:
+          description: "Il codice indicante lo stato."
+        403:
+          description: "Accesso negato"
+        404:
+          description: "Nessuno stato trovato relativo al codice IUT in input."
+        406:
+          description: "Dati input errati."
+        500:
+          description: "Errore interno."

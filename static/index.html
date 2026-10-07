@@ -42,16 +42,22 @@
   </section>
 
   <details class="card anleitung" id="anleitung">
-    <summary><h2>So meldest du den Monat im ADM-Portal</h2></summary>
+    <summary><h2>So meldest du den Monat</h2></summary>
+    <p><strong>A) Web-Service</strong> (eingerichtet, sobald das ADM-Zertifikat in der <code>.env</code> steht)</p>
     <ol>
       <li>Werte unten prüfen. Tage ohne Eintrag in der Tagesabrechnung werden ausgelassen.</li>
-      <li><strong>Datei-Weg:</strong> <em>XML-Datei erstellen &amp; herunterladen</em> und im Portal hochladen (sofern der Portal-Bereich einen Upload anbietet und die Datei in dieser Form annimmt). <strong>Formular-Weg:</strong> Schritte 2–4.</li>
-      <li>Im <a href="https://www.adm.gov.it" target="_blank" rel="noopener">Portale Unico Dogane e Monopoli</a> mit SPID/CNS anmelden →
+      <li><em>XML-Datei erstellen &amp; herunterladen</em>.</li>
+      <li>Die Datei mit der Firma remota signieren – Format <strong>XAdES-BES, enveloped</strong> (keine .p7m-Datei).</li>
+      <li>Bei der Datei <em>Signierte Datei hochladen</em> – das Dashboard prüft Signatur und Inhalt.</li>
+      <li><em>An ADM senden</em> und nach einigen Minuten <em>Status abfragen</em>. Bei Fehlern der ADM wird der Monat wieder freigegeben.</li>
+    </ol>
+    <p><strong>B) Formular im ADM-Portal</strong> (ohne Zertifikat und Signatur)</p>
+    <ol>
+      <li>Im <a href="https://www.adm.gov.it" target="_blank" rel="noopener">Portale Unico Dogane e Monopoli</a> mit SPID anmelden →
         <em>Servizi online</em> → <em>Corrispettivi Distributori Carburanti</em> → Ambiente <em>Esercizio</em> → Delegante und Codice Ditta wählen.</li>
-      <li><em>Acquisizione corrispettivi</em>: Monat/Jahr wählen. Für jeden gemeldeten Tag <strong>Imponibile</strong> und <strong>Imposta</strong> eintragen, ausgelassene Tage leer lassen –
-        ein Klick auf einen Betrag in der Tabelle kopiert ihn in die Zwischenablage.</li>
-      <li><em>Salva</em> → <em>Invia</em>. Die angezeigte IUT (Identificativo univoco dell'invio) hier unter <em>Übermittlung bestätigen</em> eintragen.</li>
-      <li>Nach einigen Minuten unter <em>Interrogazione esiti</em> mit der IUT prüfen, dass keine Fehler gemeldet wurden.</li>
+      <li><em>Acquisizione corrispettivi</em>: Monat/Jahr wählen, für jeden gemeldeten Tag <strong>Imponibile</strong> und <strong>Imposta</strong> eintragen
+        (Klick auf einen Betrag kopiert ihn), ausgelassene Tage leer lassen.</li>
+      <li><em>Salva</em> → <em>Invia</em>, die IUT hier mit <em>Hochgeladen – IUT bestätigen</em> eintragen und später unter <em>Interrogazione esiti</em> prüfen.</li>
     </ol>
   </details>
 
@@ -92,7 +98,9 @@
 
   <section class="card">
     <h2>Übermittlungen &amp; Dateien</h2>
+    <p id="adm-info" class="muted"></p>
     <div id="dateien"></div>
+    <input type="file" id="signiert-input" accept=".xml,application/xml" hidden>
   </section>
 
   <details class="card">

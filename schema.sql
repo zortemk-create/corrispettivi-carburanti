@@ -54,6 +54,20 @@ CREATE TABLE IF NOT EXISTS corrispettivi.dateien (
 -- Momentaufnahme der gemeldeten Tageswerte, um spaetere Abweichungen zu erkennen
 ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS tage JSONB;
 
+-- Signierte Datei und Versand ueber den ADM-Web-Service
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS xml_signiert TEXT;
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS signatur JSONB;            -- Ergebnis der Pruefung
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS signiert_von TEXT;
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS signiert_am TIMESTAMPTZ;
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS adm_umgebung TEXT;         -- prova | reale
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS adm_iut TEXT;
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS adm_codice TEXT;           -- Statuscode der ADM
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS adm_text TEXT;
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS adm_esito JSONB;           -- Fehler/Segnalazioni
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS adm_gesendet_von TEXT;
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS adm_gesendet_am TIMESTAMPTZ;
+ALTER TABLE corrispettivi.dateien ADD COLUMN IF NOT EXISTS adm_geprueft_am TIMESTAMPTZ;
+
 -- Aenderungsprotokoll (wer hat wann was gemacht)
 CREATE TABLE IF NOT EXISTS corrispettivi.protokoll (
   id SERIAL PRIMARY KEY,
