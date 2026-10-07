@@ -164,7 +164,6 @@ function render() {
     if (t.abweichung) quelle += ` <span class="tag abweichung" title="Gemeldet: ${esc(t.gemeldet ? t.gemeldet.imponibile + ' / ' + t.gemeldet.imposta : '–')}">geändert seit Meldung</span>`;
     return `<tr class="${cls}">
       <td>${WT[wt]} ${datum.toLocaleDateString('de-DE')}</td>
-      <td class="num">${t.liter == null ? '–' : zahl.format(num(t.liter))}</td>
       <td class="num">${fmtEur(t.brutto_quelle)}</td>
       <td class="num"><strong>${fmtEur(t.brutto)}</strong></td>
       ${t.melden ? `<td class="num kopie" data-kopie="${t.imponibile}" title="Klicken zum Kopieren">${fmtEur(t.imponibile)}</td>
