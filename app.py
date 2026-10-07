@@ -87,7 +87,7 @@ def monat_status(cur, monat):
 
 def pruefe_offen(cur, monat):
     if monat_status(cur, monat) == 'uebermittelt':
-        raise Fehler('Monat ist als übermittelt gesperrt. Zuerst „Korrektur öffnen“.', 409)
+        raise Fehler('Monat ist als übermittelt gesperrt.', 409)
 
 
 # ---------- Seiten ----------
@@ -586,20 +586,6 @@ def adm_status(cur, datei_id):
     protokolliere(cur, benutzer, 'adm_status', datei['monat'], datei=datei['dateiname'], iut=datei['adm_iut'],
                   codice=st['codice'], text=st['text'])
     return antwort({**st, 'esito': esito})
-
-
-@app.post('/api/monat/<monat>/entsperren')
-@db_tx
-def monat_entsperren(cur, monat):
-    body = request.get_json(force=True)
-    benutzer = benutzer_aus(body)
-    grund = (body.get('grund') or '').strip()
-    if not grund:
-        raise Fehler('Bitte einen Grund für die Korrektur angeben.')
-    m = cr.parse_monat(monat)
-    cur.execute("UPDATE corrispettivi.monate SET status = 'offen' WHERE monat = %s", (m,))
-    protokolliere(cur, benutzer, 'korrektur_geoeffnet', m, grund=grund)
-    return antwort({'ok': True})
 
 
 @app.get('/api/protokoll')

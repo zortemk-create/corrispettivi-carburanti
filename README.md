@@ -23,14 +23,6 @@ Die Werte werden automatisch aus der Datenbank der **Tagesabrechnung** gelesen
    Die gemeldeten Werte werden je Tag mit IUT gespeichert und der Monat gesperrt.
 5. Im Portal unter *Interrogazione esiti* prüfen, dass keine Fehler gemeldet wurden.
 
-### Korrektur nach der Meldung
-
-**Korrektur öffnen** (mit Begründung) → Tag ändern. Das Dashboard zeigt jeden abweichenden Tag
-mit der IUT, unter der er gemeldet wurde. Im Portal unter *Annullamento corrispettivi* diese IUT,
-Häkchen *Corrispettivi* und die Data di riferimento angeben, danach nur diese Tage neu senden und
-die neue IUT bestätigen. (Ein bereits gemeldeter Tag wird sonst mit „D001 Data di riferimento già
-acquisita“ abgelehnt.)
-
 ## Versand über den ADM-Web-Service
 
 1. **XML-Datei erstellen & herunterladen** (gegen das ADM-Schema geprüft).

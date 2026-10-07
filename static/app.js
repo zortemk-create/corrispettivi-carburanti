@@ -137,13 +137,6 @@ function render() {
   }
   const heute = new Date().toISOString().slice(0, 10);
   const fehlend = d.tage.filter((t) => !t.melden && t.datum <= heute);
-  const geaendert = d.tage.filter((t) => t.abweichung);
-  if (geaendert.length) {
-    hinweise.push(`<div class="hinweis bad">${geaendert.length} Tag(e) weichen von der letzten Übermittlung ab. Im ADM-Portal unter
-      <em>Annullamento corrispettivi</em> je Tag die angegebene IUT, Häkchen <em>Corrispettivi</em> und die Data di riferimento eintragen,
-      dann diese Tage neu senden und die neue IUT hier bestätigen:
-      <ul>${geaendert.map((t) => `<li>${new Date(t.datum + 'T00:00:00').toLocaleDateString('de-DE')} – IUT ${esc(t.gemeldet?.iut || '?')}</li>`).join('')}</ul></div>`);
-  }
   $('#hinweise').innerHTML = hinweise.join('');
   const link = $('#link-einst');
   if (link) link.onclick = (e) => { e.preventDefault(); oeffneEinstellungen(); };
@@ -185,7 +178,6 @@ function render() {
   $('#btn-xml').disabled = gesperrt;
   $('#btn-bestaetigen').disabled = gesperrt;
   $('#btn-extern').classList.toggle('hidden', gesperrt);
-  $('#btn-entsperren').classList.toggle('hidden', !gesperrt);
 
   const neueste = d.dateien[0]?.id;
   $('#dateien').innerHTML = d.dateien.length ? d.dateien.map((f) => `
@@ -488,17 +480,6 @@ async function erstelleXml() {
   } catch (err) { zeigeFehler(err); }
 }
 
-async function entsperren() {
-  try {
-    const name = benutzer();
-    const grund = prompt('Grund für die Korrektur des bereits übermittelten Monats:');
-    if (!grund) return;
-    await api('POST', `/api/monat/${state.monat}/entsperren`, { benutzer: name, grund });
-    toast('Monat zur Korrektur geöffnet.');
-    laden();
-  } catch (err) { toast(err.message); }
-}
-
 // ---------- Start ----------
 
 $('#benutzer').value = store('benutzer') || '';
@@ -547,7 +528,6 @@ $('#lordo-verwerfen').onclick = verwerfeLordo;
 window.addEventListener('beforeunload', (e) => { if (offeneAenderungen().length) { e.preventDefault(); e.returnValue = ''; } });
 $('#btn-einstellungen').onclick = oeffneEinstellungen;
 $('#btn-xml').onclick = erstelleXml;
-$('#btn-entsperren').onclick = entsperren;
 $('#btn-bestaetigen').onclick = () => { try { benutzer(); oeffneUpload(); } catch (err) { toast(err.message); } };
 $('#btn-extern').onclick = () => { try { benutzer(); oeffneExtern(); } catch (err) { toast(err.message); } };
 $('#ex-save').onclick = speichereExtern;
