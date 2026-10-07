@@ -3,3 +3,10 @@ __pycache__/
 *.pyc
 *.log
 output/
+zertifikate/
+*.p12
+*.pfx
+*.pem
+*.key
+*.cer
+*.crt
